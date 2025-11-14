@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Hexer: Pocket Contracts — Enhanced</title>
+<style>
+  :root {
+    --bg:#0b0f14; --bg2:#0e141b; --card:#0f1722; --muted:#a4b2c3; --line:#203040; --gold:#ffd76a; --ok:#9ef3ae; --bad:#ff7878;
+    --acc1:#7aa2ff; --acc2:#a066ff; --acc3:#4fd1c5; --glow:#00d1ff55;
+    --tabbar-h: 64px; --card-glow: 0 4px 12px #00000080; --focus-glow: 0 0 0 2px #00d1ff55;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100dvh; }
+  body{
+    margin:0; font-family: ui-sans-serif, -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color:#e8eef5;
+    background:radial-gradient(1200px 800px at 80% -10%, #14324a, transparent 60%), radial-gradient(900px 700px at -20% 120%, #28143f, transparent 60%), var(--bg);
+    overscroll-behavior:none;
+  }
+  .orbs{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+  .orb{position:absolute; width:360px; height:360px; border-radius:50%; filter:blur(40px); opacity:.18; animation:float 18s ease-in-out infinite;}
+  .orb.a{background:linear-gradient(135deg, #4fd1c5, transparent); top:-80px; left:-80px;}
+  .orb.b{background:linear-gradient(135deg, #7aa2ff, transparent); bottom:-120px; right:-60px; animation-delay:3s;}
+  .orb.c{background:linear-gradient(135deg, #a066ff, transparent); top:50%; left:60%; transform:translate(-50%,-50%); animation-delay:6s;}
+  @keyframes float{0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-20px) scale(1.02)}}
+
+  .topbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    background:linear-gradient(180deg, rgba(12,16,22,.90), rgba(12,16,22,.96));
+    backdrop-filter:blur(8px);
+    border-top:1px solid #1a2532;
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));
+    display:flex; gap:8px; align-items:flex-start;
+    justify-content:space-around;
+    box-shadow:0 -6px 24px #0006; min-height:var(--tabbar-h);
+  }
+  #view{ position:relative; z-index:1; padding-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px)); }
+
+  .navbtn{
+    flex:1;
+    background:linear-gradient(180deg,#17212c,#0f1722); border:1px solid #1e2a38; color:#d9e6f2;
+    padding:8px 6px;
+    border-radius:12px;
+    font-weight:700; font-size:12px;
+    display:inline-flex; align-items:center; justify-content:center;
+    flex-direction:column;
+    gap:2px;
+    cursor:pointer; position:relative;
+    min-height:50px;
+    transition: transform .15s ease, box-shadow .2s ease;
+  }
+  .navbtn.active{ border-color:#39506a; box-shadow: var(--focus-glow), 0 0 24px #2b8cff20; }
+  .navbtn:active{ transform:scale(.96); }
+  .navbtn .ico{ font-size:18px; opacity:.9; }
+
+  .ripple{ position:absolute; inset:0; overflow:hidden; border-radius:inherit; } .ripple span{ position:absolute; border-radius:50%; transform:translate(-50%,-50%); background:#ffffff22; animation:rip .6s ease-out; pointer-events:none; }
+  @keyframes rip{ from{width:0;height:0;opacity:.5} to{width:400px;height:400px;opacity:0} }
+
+  .section{ position:relative; z-index:1; padding:14px; padding-left:max(14px, env(safe-area-inset-left,0px)); padding-right:max(14px, env(safe-area-inset-right,0px)); }
+  .card{ position:relative; background:linear-gradient(180deg, rgba(18,24,34,.85), rgba(12,16,22,.85)); border:1px solid #213246; border-radius:16px; padding:14px; box-shadow:var(--card-glow), inset 0 1px 0 #335, inset 0 0 0 1px #1b2940; transition: box-shadow .2s, border-color .2s; }
+  .card::before{ content:''; position:absolute; inset:0; background:linear-gradient(145deg, rgba(255,255,255,.04), transparent); border-radius:inherit; pointer-events:none; }
+  .card:hover{ border-color:#2a405a; box-shadow:0 16px 40px #000a, 0 0 0 1px #2a405a inset; }
+
+  .muted{ color:var(--muted); }
+  .row{ display:flex; align-items:center; gap:10px; }
+  .grid2{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .divider{ height:1px; background:linear-gradient(90deg, transparent, #2a3a4e, transparent); margin:12px 0; }
+
+  .btn{ position:relative; background:linear-gradient(180deg, #1a2736,#0f1722); border:1px solid #24364a; color:#e6f0ff; padding:12px 14px; border-radius:12px; font-weight:800; cursor:pointer; transition:transform .06s, box-shadow .2s, border-color .2s;
+    min-height:50px;
+  }
+  .btn:hover{ transform:translateY(-1px); border-color:#325176; box-shadow:0 6px 18px #0af2; }
+  .btn:active{ transform:scale(.97); background:#132030; }
+  .btn[disabled]{ opacity:.6; cursor:not-allowed; filter:grayscale(.2); }
+  .btn.full{ width:100%; }
+
+  .badge{ background:linear-gradient(180deg,#112131,#0b1520); border:1px solid #20364d; padding:6px 10px; border-radius:999px; font-size:12px; display:inline-flex; align-items:center; gap:6px; }
+  .pill{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#0f1b28; border:1px solid #213246; }
+
+  .rarity-rare{ box-shadow:inset 4px 0 0 #5ca4ffaa; }
+  .rarity-epic{ box-shadow:inset 4px 0 0 #a066ffaa; }
+  .rarity-legendary{ box-shadow:inset 4px 0 0 gold; }
+  .rarity-unique{ box-shadow:inset 4px 0 0 crimson; }
+
+  .bar{ height:10px; border-radius:999px; background:#0f141a; overflow:hidden; border:1px solid #1c2a38; transition:all .3s; }
+  .bar>i{ display:block; height:100%; width:0; background:linear-gradient(90deg,#3fb950,#49d6a4); transition:width .35s; }
+  .bar.red>i{ background:linear-gradient(90deg,#ff5b5b,#ff9a7a); }
+  .bar.xp>i{ background:linear-gradient(90deg,#79aaff,#a066ff); }
+
+  #playerFloat,#enemyFloat{ position:relative; min-height:1.2em; }
+  .float{ position:absolute; left:50%; transform:translateX(-50%); animation:floatUp 900ms ease-out forwards; font-weight:800; opacity:.95; pointer-events:none; text-shadow:0 0 6px #0008; }
+  .float.dmg{ color:#ff8080; font-size:16px; }
+  .float.crit{ color:gold; font-size:20px; text-shadow:0 0 6px #fff8; }
+  .float.dot{ color:#ff6666; font-size:14px; }
+  .float.heal{ color:#77ffb3; font-size:16px; }
+  @keyframes floatUp{0%{opacity:1; transform:translateX(-50%) translateY(0)}100%{opacity:0; transform:translateX(-50%) translateY(-30px)}}
+  @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-3px)}50%{transform:translateX(3px)}75%{transform:translateX(-2px)}100%{transform:translateX(0)}}
+
+  .statusRow{ display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
+  .status{ display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid #2a3a4e; background:#0e1622; }
+  .status i{ font-style:normal }
+
+  .contractCard{ position:relative; background:linear-gradient(180deg, rgba(18,24,34,.85), rgba(10,14,20,.8)); border:1px solid #26384d; border-radius:14px; padding:12px; margin-bottom:10px; transition:transform .15s; }
+  .contractCard:hover{ transform:scale(1.01); }
+  .boss{ border:2px solid #ff5252; box-shadow:0 0 24px #ff525222 inset; background:linear-gradient(180deg,#1a0e12,#10080a); }
+
+  .questCard{ background:linear-gradient(180deg, rgba(18,24,34,.85), rgba(10,14,20,.8)); border:1px solid #26384d; border-radius:14px; padding:12px; margin-bottom:10px; }
+  .questCard.active{ border-color:var(--gold); box-shadow: 0 0 16px #ffd76a22; }
+  .questCard.completed{ opacity:.5; background: #0f1722; }
+  .questCard.locked{ opacity:.6; }
+  .questGoal{ font-size:13px; background:#0f1b28; border:1px solid #213246; padding:6px 10px; border-radius:8px; margin-top:6px; }
+
+  /* NEW: Auto-battle toggle */
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+  }
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #2a3a4e;
+    transition: .4s;
+    border-radius: 34px;
+    border: 1px solid #3a4a5e;
+  }
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  input:checked + .toggle-slider {
+    background-color: var(--acc1);
+  }
+  input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+  }
+
+  /* NEW: Bestiary styling */
+  .bestiary-entry {
+    background: linear-gradient(180deg, rgba(18,24,34,.85), rgba(10,14,20,.8));
+    border: 1px solid #26384d;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .bestiary-entry.discovered {
+    border-color: var(--ok);
+  }
+  .progress-text {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* NEW: Prestige glow */
+  .prestige-ready {
+    animation: prestigeGlow 2s ease-in-out infinite;
+  }
+  @keyframes prestigeGlow {
+    0%, 100% { box-shadow: 0 0 20px #ffd76a44; }
+    50% { box-shadow: 0 0 40px #ffd76a88; }
+  }
+
+  /* NEW: Stats styling */
+  .stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #1a2532;
+  }
+  .stat-item:last-child {
+    border-bottom: none;
+  }
+  .stat-label {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .stat-value {
+    font-weight: 800;
+    color: var(--gold);
+  }
+
+  input[type="range"]{ width:100%; accent-color:#79aaff; }
+
+  #toasts{ position:fixed; z-index:50; right:12px; bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + 12px); display:flex; flex-direction:column; gap:10px; }
+  .toast{ background:linear-gradient(180deg,#122233,#0b1622); border:1px solid #25405a; color:#def; padding:10px 12px; border-radius:12px; box-shadow:0 10px 24px #0008; min-width:200px; }
+  .toast.good{ border-color:#1f5a3a; } .toast.bad{ border-color:#5a1f1f; }
+
+  .modal-backdrop{ position:fixed; inset:0; background:#0009; display:none; align-items:flex-end; justify-content:center; z-index:40; }
+  .modal{ width:100%; max-width:520px; margin:12px; background:linear-gradient(180deg,#0f1722,#0c121b); border:1px solid #24364a; border-radius:16px; padding:16px; box-shadow:0 20px 60px #000c; }
+
+  @media (prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important;} }
+  @media (max-width:900px){
+    .grid3{ grid-template-columns:repeat(2,1fr); }
+    .card .btn{ min-height:50px; font-weight:800; }
+  }
+</style>
+</head>
+<body>
+<div class="orbs"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+<div class="topbar" id="nav" role="tablist" aria-label="Primary navigation"></div>
+<div id="view"></div>
+<div id="toasts"></div>
+
+<div class="modal-backdrop" id="resultModal" onclick="closeResult()">
+  <div class="modal" id="resultModalInner" onclick="event.stopPropagation()"></div>
+</div>
+
+<script>
+/* ===================== STATE ===================== */
+let G=null; const COMBAT_TICK_MS=800; let ACTIVE='board';
+const $=s=>document.querySelector(s);
+function toast(msg,type=''){ const wrap=$('#toasts'); const el=document.createElement('div'); el.className='toast '+type; el.textContent=msg; wrap.appendChild(el); setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateY(6px)'; setTimeout(()=>el.remove(),250); },2200); }
+window.addEventListener('error',e=>toast('UI error: '+(e.message||'unknown'),'bad'));
+function saveGame(){ try{ localStorage.setItem('hexer_save', JSON.stringify(G)); }catch{} }
+function loadGame(){ try{ const raw=localStorage.getItem('hexer_save'); if(raw){ G=JSON.parse(raw); return; } }catch{} newGame(); }
+
+function newGame(){
+  G={
+    hp:100, baseDPS:12, gold:250, lvl:1, xp:0, xpTo:100, skillPoints:0,
+    school:null,
+    mats:{ herb:10, alcohol:8, part:12 },
+    items:{ bomb:1, mutagen:0, trophy:0, swallow:0 },
+    gear:{ steel:null, silver:null, helmet:null, chest:null, gauntlets:null, trousers:null, boots:null, trophy:null },
+    schematics:{}, inventory:[],
+    prestige:{ sigils:3, perks:{}, count:0 },
+    mutations:{}, bonus:{}, vigor:100,
+    combat:null, currentContract:null, difficulty:1,
+    stats:{ totalKills:0, perfectStacks:0, totalDamageDealt:0, potionsUsed:0, signsCast:0, bossesKilled:0, criticalHits:0 },
+    quests: {
+      currentChapter: 'The Mire\'s Call',
+      currentQuest: 'corpse_reeds',
+      completedQuests: {},
+      flags: {}
+    },
+    autoBattle: false,
+    bestiary: {},
+    settings: { autoBattleDelay: 2000 }
+  };
+}
+
+/* ===================== DATA ===================== */
+const DATA={ swords:[], armorSets:[], mutationTrees:[], monsters:[], bossMonsters:[], modifiers:[], recipes:{}, signs:[], contracts:{levels:[]}, trophies:{}, questChapters:[], quests:[] };
+const SCHOOL = {
+  wolf:   { name:'Wolven',  ico:'🐺', passive:{ critChance:.03, signIntensity:.05 }},
+  cat:    { name:'Feline',  ico:'🐱', passive:{ attackSpeed:.10, critMulti:.10 }},
+  bear:   { name:'Ursine',  ico:'🐻', passive:{ damage:.15, stagger:.05 }},
+  griffin:{ name:'Griffin', ico:'🦅', passive:{ signIntensity:.10, signCostMult:.90 }},
+  viper:  { name:'Viper',   ico:'🐍', passive:{ poisonChance:.05, poisonDamageMult: .10 }},
+};
+
+DATA.signs=[
+  { id:'igni', name:'Igni', desc:'Burn enemies', cost:20 },
+  { id:'quen', name:'Quen', desc:'Shield + reflect', cost:30 },
+  { id:'aard', name:'Aard', desc:'Stun briefly', cost:25 },
+  { id:'yrden', name:'Yrden', desc:'Resist shred + slow', cost:15 },
+  { id:'axii', name:'Axii', desc:'Confuse (weakens)', cost:35 },
+];
+
+const VIEWS=[
+  { id:'board', name:'Board', ico:'🏠' },
+  { id:'quests', name:'Quests', ico:'🗺️' },
+  { id:'hunts', name:'Hunts', ico:'🎯' },
+  { id:'forge', name:'Forge', ico:'🔥' },
+  { id:'mutate', name:'Mutations', ico:'🧬' },
+];
+const SECONDARY_VIEWS=[
+  { id:'craft', name:'Craft', ico:'🧪' },
+  { id:'inv', name:'Inventory', ico:'🎒' },
+  { id:'sets', name:'Sets', ico:'🧩' },
+  { id:'bestiary', name:'Bestiary', ico:'📖' },
+  { id:'stats', name:'Stats', ico:'📊' },
+];
+
+const R = (r)=>`rarity-${r}`;
+
+/* ===================== NAV ===================== */
+function mkRipple(e){ const r=e.currentTarget.querySelector('.ripple'); if(!r) return; const s=document.createElement('span'); s.style.left=(e.offsetX||0)+'px'; s.style.top=(e.offsetY||0)+'px'; r.appendChild(s); setTimeout(()=>s.remove(),650); }
+function renderNav(){
+  const nav=$('#nav'); nav.innerHTML = VIEWS.map(v=>`
+    <button class="navbtn ${ACTIVE===v.id?'active':''}" onclick="switchView('${v.id}')">
+      <span class="ico">${v.ico}</span> ${v.name} <span class="ripple"></span>
+    </button>`).join('');
+  nav.querySelectorAll('.navbtn').forEach(b=>b.addEventListener('click',mkRipple));
+}
+window.switchView=function(id){
+  ACTIVE=id; renderNav();
+  try{
+    if(id==='board') viewBoard();
+    else if(id==='quests') viewQuests();
+    else if(id==='hunts') viewHunts();
+    else if(id==='combat') viewCombat();
+    else if(id==='forge') viewForge();
+    else if(id==='mutate') viewMutationsTab();
+    else if(id==='craft') viewCraft();
+    else if(id==='inv') viewInventory();
+    else if(id==='sets') viewSetsTab();
+    else if(id==='bestiary') viewBestiary();
+    else if(id==='stats') viewStats();
+  }catch(err){ toast('Render error: '+err.message,'bad'); console.error(err); }
+};
+
+/* ===================== GEAR ===================== */
+DATA.swords = [
+  { id:"training_steel", name:"Training Steel", rarity:"rare", type:"steel", bonuses:{ damage:1.05, critChance:.03 }, needs:{ part:4, gold:80 } },
+  { id:"training_silver", name:"Training Silver", rarity:"rare", type:"silver", bonuses:{ damage:1.05, critChance:.03 }, needs:{ part:4, gold:90 } },
+  { id:"viper_steel", name:"Viper Steel Sword", rarity:"epic", type:"steel", bonuses:{ bleedChance:.05, critChance:.03 }, needs:{ part:10, gold:180 } },
+  { id:"feline_steel", name:"Feline Steel Sword", rarity:"epic", type:"steel", bonuses:{ attackSpeed:.10, critMulti:.10 }, needs:{ part:12, gold:220 } },
+  { id:"griffin_steel", name:"Griffin Steel Sword", rarity:"epic", type:"steel", bonuses:{ igniDamage:.15, signCostMult:.90 }, needs:{ part:12, gold:230 } },
+  { id:"ursine_steel", name:"Ursine Steel Sword", rarity:"epic", type:"steel", bonuses:{ damage:1.20, stagger:.05 }, needs:{ part:14, gold:260 } },
+  { id:"wolven_steel", name:"Wolven Steel Sword", rarity:"epic", type:"steel", bonuses:{ critChance:.03, signIntensity:.05 }, needs:{ part:12, gold:230 } },
+  { id:"manticore_steel", name:"Manticore Steel Sword", rarity:"epic", type:"steel", bonuses:{ poisonChance:.05, bleedChance:.05 }, needs:{ part:14, gold:260 } },
+  { id:"toussaint_steel", name:"Toussaint Steel Sword", rarity:"legendary", type:"steel", bonuses:{ critMulti:.20, critChance:.05 }, needs:{ part:20, gold:380 } },
+  { id:"hengaidth_steel", name:"Hen Gaidth Steel Sword", rarity:"legendary", type:"steel", bonuses:{ lifeLeech:.10, burnChance:.10 }, needs:{ part:20, gold:380 } },
+  { id:"aerondight", name:"Aerondight", rarity:"unique", type:"steel", bonuses:{ scalingDamage:.05 }, needs:{ part:25, gold:500 } },
+  { id:"mahakaman_cleaver", name:"Mahakaman Cleaver", rarity:"legendary", type:"steel", bonuses:{ armorPen:.25 }, needs:{ part:18, gold:340 } },
+  { id:"viper_silver", name:"Viper Silver Sword", rarity:"epic", type:"silver", bonuses:{ poisonChance:.05, burnResistIgnore:.10 }, needs:{ part:12, gold:240 } },
+  { id:"feline_silver", name:"Feline Silver Sword", rarity:"epic", type:"silver", bonuses:{ critChance:.06, attackSpeed:.10 }, needs:{ part:12, gold:240 } },
+  { id:"griffin_silver", name:"Griffin Silver Sword", rarity:"epic", type:"silver", bonuses:{ yrdenPower:.15, statusDuration:.10 }, needs:{ part:12, gold:240 } },
+  { id:"ursine_silver", name:"Ursine Silver Sword", rarity:"epic", type:"silver", bonuses:{ damage:1.25, bleedChance:.05 }, needs:{ part:14, gold:280 } },
+  { id:"wolven_silver", name:"Wolven Silver Sword", rarity:"epic", type:"silver", bonuses:{ bleedChance:.05, burnChance:.05, signIntensity:.05 }, needs:{ part:14, gold:280 } },
+  { id:"manticore_silver", name:"Manticore Silver Sword", rarity:"epic", type:"silver", bonuses:{ toxicResistIgnore:.10, critChance:.04 }, needs:{ part:14, gold:280 } },
+  { id:"toussaint_silver", name:"Toussaint Silver Sword", rarity:"legendary", type:"silver", bonuses:{ critMulti:.20, critChance:.08 }, needs:{ part:20, gold:420 } },
+  { id:"hengaidth_silver", name:"Hen Gaidth Silver Sword", rarity:"legendary", type:"silver", bonuses:{ lifeLeech:.10, bleedResistIgnore:.15 }, needs:{ part:20, gold:420 } },
+  { id:"tor_lara", name:"Tor Lara Blade", rarity:"unique", type:"silver", bonuses:{ onCritRandomStatus:.10 }, needs:{ part:22, gold:460 } },
+  { id:"moonblade", name:"Moonblade", rarity:"legendary", type:"silver", bonuses:{ nightDamage:.20, burnChance:.10 }, needs:{ part:18, gold:360 } },
+  { id:"whisperfang", name:"Whisperfang", rarity:"unique", type:"steel", bonuses:{ poisonChance:1.00, dotDamageMult:.25 }, needs:{ part:24, gold:480 } },
+  { id:"crimson_fang", name:"Crimson Fang", rarity:"unique", type:"steel", bonuses:{ bleedOnCrit:true, critMulti:.15 }, needs:{ part:24, gold:480 } },
+];
+
+DATA.armorSets = [
+  { setId:"crimson", name:"Crimson Set", theme:"Bleed", pieces:[
+    { id:"crimson_helm", name:"Crimson Helm", rarity:"epic", type:"armor", slot:"helmet", set:"crimson", bonuses:{ bleedDuration:.20 }, needs:{ part:8, gold:160 } },
+    { id:"crimson_chest", name:"Crimson Cuirass", rarity:"epic", type:"armor", slot:"chest", set:"crimson", bonuses:{ bleedChance:.05 }, needs:{ part:10, gold:200 } },
+    { id:"crimson_gloves", name:"Crimson Gloves", rarity:"epic", type:"armor", slot:"gauntlets", set:"crimson", bonuses:{ critChance:.03 }, needs:{ part:8, gold:160 } },
+    { id:"crimson_boots", name:"Crimson Boots", rarity:"epic", type:"armor", slot:"boots", set:"crimson", bonuses:{ attackSpeed:.05 }, needs:{ part:8, gold:160 } },
+  ], setBonuses:[
+    { count:2, effect:{ bleedDamageMult:1.15 } },
+    { count:4, effect:{ bleedResistIgnore:.25 } },
+  ]},
+  { setId:"viper", name:"Viper Set", theme:"Poison", pieces:[
+    { id:"viper_helm", name:"Viper Hood", rarity:"epic", type:"armor", slot:"helmet", set:"viper", bonuses:{ poisonChance:.05 }, needs:{ part:8, gold:160 } },
+    { id:"viper_chest", name:"Viper Jerkin", rarity:"epic", type:"armor", slot:"chest", set:"viper", bonuses:{ poisonDuration:.20 }, needs:{ part:10, gold:200 } },
+    { id:"viper_gloves", name:"Viper Gloves", rarity:"epic", type:"armor", slot:"gauntlets", set:"viper", bonuses:{ attackSpeed:.05 }, needs:{ part:8, gold:160 } },
+    { id:"viper_boots", name:"Viper Boots", rarity:"epic", type:"armor", slot:"boots", set:"viper", bonuses:{ moveSpeed:.10 }, needs:{ part:8, gold:160 } },
+  ], setBonuses:[
+    { count:2, effect:{ poisonDamageMult:1.20 } },
+    { count:4, effect:{ poisonResistIgnore:.30 } },
+  ]},
+];
+
+DATA.trophies={
+  beast_head:   { name:'Beast Trophy', bonuses:{ bleedChance:.03, bleedDamageMult:1.10 } },
+  necro_head:   { name:'Necrophage Trophy', bonuses:{ poisonChance:.04, poisonDamageMult:1.10 } },
+  specter_head: { name:'Specter Trophy', bonuses:{ signIntensity:.06 } },
+  hunt_head:    { name:'Wild Hunt Trophy', bonuses:{ dotDamageMult:.10, poisonResistIgnore:.10, bleedResistIgnore:.10 } },
+};
+
+DATA.monsters=[
+  { id:"drowner", name:"Drowner", ico:"🧟", category:"Necrophage", baseHP:90, baseDPS:12, resist:{ bleed:.10, poison:.30, burn:.20 } },
+  { id:"hound", name:"Hound", ico:"🐕", category:"Beast", baseHP:95, baseDPS:13, resist:{ bleed:.10, poison:.25, burn:.20 } },
+  { id:"griffin", name:"Griffin", ico:"🦅", category:"Beast", baseHP:130, baseDPS:23, resist:{ bleed:.40, poison:.20, burn:.15 } },
+];
+DATA.bossMonsters=[
+  { id:"eredin", name:"Eredin", ico:"👑", category:"Wild Hunt", baseHP:420, baseDPS:58, resist:{ bleed:.40, poison:.50, burn:.30 }, boss:true },
+  { id:"katakan", name:"Katakan", ico:"🦇", category:"Vampire", baseHP:320, baseDPS:48, resist:{ bleed:.50, poison:.20, burn:.10 }, boss:true },
+  { id:"leshen_ancient", name:"Ancient Leshen", ico:"🌳", category:"Relict", baseHP:360, baseDPS:52, resist:{ bleed:.30, poison:.40, burn:.25 }, boss:true },
+  { id:"gael", name:"Gael", ico:"👻", category:"Specter", baseHP:300, baseDPS:44, resist:{ bleed:.20, poison:.30, burn:.40 }, boss:true },
+  { id:"golyat", name:"Golyat", ico:"👹", category:"Ogre", baseHP:380, baseDPS:50, resist:{ bleed:.15, poison:.15, burn:.15 }, boss:true },
+];
+
+const BOSS_UNIQUES={
+  eredin:['aerondight','hengaidth_silver'],
+  katakan:['whisperfang'],
+  leshen_ancient:['tor_lara','moonblade'],
+  gael:['crimson_fang'],
+  golyat:['mahakaman_cleaver'],
+};
+
+DATA.modifiers=[
+  { id:"venomproof", name:"Venom-Proof", desc:"Immune to Poison.", effect:{ resist:{ poison:1 } } },
+  { id:"steelhide", name:"Steel-Hide", desc:"-15% damage taken.", effect:{ damageReduction:.15 } },
+];
+
+function pushLevels(tier,count,o){ for(let l=1;l<=count;l++){ DATA.contracts.levels.push({
+  tier, level:l,
+  hpMult:o.hpBase + l*o.hpPer,
+  dpsMult:o.dpsBase + l*o.dpsPer,
+  rewardParts:o.partsBase + Math.floor(l*o.partsPer),
+  rewardGold:o.goldBase + Math.floor(l*o.goldPer),
+  mutagenChance: Math.min(.9, o.mutBase + l*o.mutPer),
+  xp:o.xpBase + Math.floor(l*o.xpPer)
+});}}
+pushLevels(0,10,{ hpBase:.8, hpPer:.04, dpsBase:.8, dpsPer:.03, partsBase:1, partsPer:.3, goldBase:40, goldPer:6, mutBase:.00, mutPer:.002, xpBase:25, xpPer:5 });
+pushLevels(1,20,{ hpBase:1.0, hpPer:.06, dpsBase:1.0, dpsPer:.05, partsBase:3, partsPer:.33, goldBase:100, goldPer:24, mutBase:.05, mutPer:.003, xpBase:60, xpPer:10 });
+DATA.contracts.levels.push({ tier:6, level:1, hpMult:4.2, dpsMult:3.6, rewardParts:30, rewardGold:1000, mutagenChance:.5, xp:600 });
+
+DATA.mutationTrees = [
+  { treeId:"bloodcraft", name:"Bloodcraft", theme:"Bleed", nodes:[
+    { id:"mut_blood_1", name:"Blood Frenzy", desc:"+5% Crit Chance vs bleeding", tier:1, requires:[], cost:{ mutagen:1, perk:1 } },
+    { id:"mut_blood_2", name:"Hemorrhage Surge", desc:"+25% Crit Damage vs bleeding", tier:2, requires:["mut_blood_1"], cost:{ mutagen:2, perk:1 } },
+    { id:"mut_blood_3", name:"Exsanguinate", desc:"+10% Bleed Chance, +5% DoT Duration", tier:2, requires:["mut_blood_2"], cost:{ mutagen:2, perk:1 } },
+    { id:"mut_blood_4", name:"Serrated Arteries", desc:"Bleeds stack up to 2", tier:3, requires:["mut_blood_3"], cost:{ mutagen:3, perk:1 } },
+    { id:"mut_blood_5", name:"Red Mist", desc:"Killing a bleeding enemy restores 10% Vigor", tier:3, requires:["mut_blood_4"], cost:{ mutagen:3, perk:1 } },
+    { id:"mut_blood_6", name:"Crimson Dance", desc:"Bleeds ignore 20% resist", tier:4, requires:["mut_blood_5"], cost:{ mutagen:4, perk:2 } },
+    { id:"mut_blood_7", name:"Gushing Wounds", desc:"Bleed ticks 25% faster", tier:4, requires:["mut_blood_6"], cost:{ mutagen:4, perk:2 } },
+    { id:"mut_blood_8", name:"Bloodletting Reflex", desc:"+5% Attack Speed vs bleeding", tier:5, requires:["mut_blood_7"], cost:{ mutagen:5, perk:2 } },
+  ]},
+  { treeId:"toxin", name:"Toxic Mastery", theme:"Poison", nodes:[
+    { id:"mut_toxin_1", name:"Venom Expertise", desc:"+10% Poison Chance", tier:1, requires:[], cost:{ mutagen:1, perk:1 } },
+    { id:"mut_toxin_2", name:"Neurotoxin Bypass", desc:"Poison ignores 20% resist", tier:2, requires:["mut_toxin_1"], cost:{ mutagen:2, perk:1 } },
+    { id:"mut_toxin_3", name:"Adrenal Tox Boost", desc:"+5% Attack Speed per poisoned target (max 3)", tier:2, requires:["mut_toxin_2"], cost:{ mutagen:2, perk:1 } },
+    { id:"mut_toxin_4", name:"Toxic Echo", desc:"Poisoned enemies take +10% more DoT", tier:3, requires:["mut_toxin_3"], cost:{ mutagen:3, perk:1 } },
+    { id:"mut_toxin_5", name:"Basilisk Blood", desc:"Poison chance doubles on crit", tier:3, requires:["mut_toxin_4"], cost:{ mutagen:3, perk:1 } },
+    { id:"mut_toxin_6", name:"Toxic Immunity", desc:"Poison DoT heals you 5% of DoT dealt", tier:4, requires:["mut_toxin_5"], cost:{ mutagen:4, perk:2 } },
+    { id:"mut_toxin_7", name:"Vile Spread", desc:"20% chance poison spreads on tick", tier:4, requires:["mut_toxin_6"], cost:{ mutagen:4, perk:2 } },
+    { id:"mut_toxin_8", name:"Deadly Catalyst", desc:"Poison ticks 5% kill if <15% HP", tier:5, requires:["mut_toxin_7"], cost:{ mutagen:5, perk:2 } },
+  ]},
+  { treeId:"signs", name:"Sign Conduction", theme:"Signs", nodes:[
+    { id:"mut_sign_1", name:"Aether Channeling", desc:"Signs cost 20% less", tier:1, requires:[], cost:{ mutagen:1, perk:1 } },
+    { id:"mut_sign_2", name:"Elemental Attunement", desc:"Igni +10% burn, Aard +15% knockback", tier:2, requires:["mut_sign_1"], cost:{ mutagen:2, perk:1 } },
+    { id:"mut_sign_3", name:"Enhanced Glyph Binding", desc:"Quen reflects 10%, Yrden slows 20% more", tier:2, requires:["mut_sign_2"], cost:{ mutagen:2, perk:1 } },
+    { id:"mut_sign_4", name:"Sign Saturation", desc:"Casting a sign +10% dmg for 3s", tier:3, requires:["mut_sign_3"], cost:{ mutagen:3, perk:1 } },
+    { id:"mut_sign_5", name:"Elemental Marking", desc:"Sign hits +15% status chance on target", tier:3, requires:["mut_sign_4"], cost:{ mutagen:3, perk:1 } },
+    { id:"mut_sign_6", name:"Quen Mastery", desc:"First Quen hit: 25% lifesteal for 3s", tier:4, requires:["mut_sign_5"], cost:{ mutagen:4, perk:2 } },
+    { id:"mut_sign_7", name:"Runic Surge", desc:"Signs 10% apply random status", tier:4, requires:["mut_sign_6"], cost:{ mutagen:4, perk:2 } },
+    { id:"mut_sign_8", name:"Overload", desc:"Cast signs back-to-back: 2nd +20% dmg", tier:5, requires:["mut_sign_7"], cost:{ mutagen:5, perk:2 } },
+  ]},
+];
+
+DATA.questChapters = [ "The Mire's Call", "Embers of the Past", "The Cinders Rise", "Flame and Blood", "Aftermath" ];
+DATA.quests = [
+  { id: "corpse_reeds", chapter: "The Mire's Call", title: "A Corpse in the Reeds", desc: "Marsh lights flicker. A drownling whispers.", levelReq: 1, goals: [{ type: "huntWin", count: 1 }], rewards: { gold: 60, parts: 3, xp: 120 }, unlock: { craft: "swallow" }, optional: false, next: "rot_crossroads" },
+  { id: "rot_crossroads", chapter: "The Mire's Call", title: "Rot Beneath the Crossroads", desc: "Necrophages nest under stone.", levelReq: 1, goals: [{ type: "huntWin", count: 2 }], rewards: { gold: 90, parts: 5, xp: 160 }, unlock: {}, optional: false, next: "tools_of_the_trade" },
+  { id: "tools_of_the_trade", chapter: "The Mire's Call", title: "Tools of the Trade", desc: "Forge something reliable.", levelReq: 1, goals: [{ type: "craft", item: "training_steel", count: 1 }], rewards: { gold: 70, parts: 2, xp: 120 }, unlock: { schematic: "training_steel" }, optional: false, next: null },
+];
+
+/* ===================== AUTO-BATTLE SYSTEM ===================== */
+let autoBattleLoop = null;
+
+function startAutoBattle() {
+  if(autoBattleLoop) return;
+  G.autoBattle = true;
+  saveGame();
+  toast('Auto-battle enabled', 'good');
+  scheduleNextAutoBattle();
+}
+
+function stopAutoBattle() {
+  if(autoBattleLoop) {
+    clearTimeout(autoBattleLoop);
+    autoBattleLoop = null;
+  }
+  G.autoBattle = false;
+  saveGame();
+  toast('Auto-battle disabled');
+}
+
+function scheduleNextAutoBattle() {
+  if(!G.autoBattle) return;
+  autoBattleLoop = setTimeout(() => {
+    if(!G.combat && G.autoBattle) {
+      const lvl = Math.max(1, Math.min(10, G.lvl));
+      const contract = generateContract(0, lvl, {modCount: 0});
+      if(contract) {
+        G.currentContract = contract;
+        enterCombat(contract.enemy);
+      }
+    }
+  }, G.settings.autoBattleDelay);
+}
+
+window.toggleAutoBattle = function() {
+  if(G.autoBattle) {
+    stopAutoBattle();
+  } else {
+    startAutoBattle();
+  }
+  if(ACTIVE === 'board') viewBoard();
+};
+
+/* ===================== COMBAT CORE ===================== */
+let lastEnemyHp=null, lastPlayerHp=null, loop=null, stunTicks=0, confuseTicks=0, slowTicks=0, signBuffTicks=0;
+function hpMax(){ let base=100; if(G?.bonus?.hpMult) base=Math.round(base*G.bonus.hpMult); return base; }
+function vigorMax(){ return 100; }
+function bar(cur,max,red=false){ const pct=Math.max(0,Math.min(1,max?cur/max:0)); return `<div class="bar ${red?'red':''}"><i style="width:${(pct*100).toFixed(0)}%"></i></div>`; }
+function xp_bar(cur,max){ const pct=Math.max(0,Math.min(1,max?cur/max:0)); return `<div class="bar xp"><i style="width:${(pct*100).toFixed(0)}%"></i></div>`; }
+function floatAt(sel,text,type='dmg'){ const c=$(sel); if(!c) return; const el=document.createElement('div'); el.className='float '+type; el.textContent=text; c.appendChild(el); setTimeout(()=>el.remove(),1000); }
+
+function getEquippedWeapon(pref){ const id=G?.gear?.[pref]; if(id){ return DATA.swords.find(x=>x.id===id)||null; } return null; }
+
+function applyModifierToEnemy(enemy, effect){
+  if(!enemy||!effect) return; enemy.resist=enemy.resist||{};
+  if(effect.resist){ for(const k in effect.resist){ enemy.resist[k]=Math.min(1,(enemy.resist[k]||0)+effect.resist[k]); } }
+  if(effect.damageReduction){ enemy.damageReduction=(enemy.damageReduction||0)+effect.damageReduction; }
+}
+
+function findEff(m,type){ return (m.effects||[]).find(e=>e.type===type); }
+function addEffect(m,type,baseDur=5,baseStacks=1){
+  m.effects=m.effects||[];
+  const e=findEff(m,type);
+  const durMult = 1 + (G.bonus?.statusDuration||0) + (type==='bleed'?(G.bonus?.bleedDuration||0):0) + (type==='poison'?(G.bonus?.poisonDuration||0):0);
+  const dur = Math.round(baseDur*durMult);
+  let maxStacks = (type==='bleed' && G.bonus?.bleedStacksMax) ? G.bonus.bleedStacksMax : 1;
+  if(!e){ m.effects.push({type, stacks:Math.min(maxStacks,baseStacks), dur}); }
+  else{ e.stacks = Math.min(maxStacks, e.stacks + baseStacks); e.dur = Math.max(e.dur, dur); }
+}
+function effectResistAdjusted(type, enemy){
+  let resist=(enemy.resist&&enemy.resist[type])||0;
+  if(type==='bleed'){
+    resist = Math.max(0, resist - (G.bonus?.bleedResistIgnore||0) - (getWeaponResistIgnore('bleed')||0));
+  }
+  if(type==='poison'){
+    resist = Math.max(0, resist - (G.bonus?.poisonResistIgnore||0) - (getWeaponResistIgnore('poison')||0));
+  }
+  if(type==='burn'){
+    resist = Math.max(0, resist - (G.bonus?.burnResistIgnore||0) - (getWeaponResistIgnore('burn')||0));
+  }
+  return resist;
+}
+function getWeaponResistIgnore(type){
+  const wep = getEquippedWeapon('steel') || getEquippedWeapon('silver');
+  if(!wep?.bonuses) return 0;
+  if(type==='bleed' && wep.bonuses.bleedResistIgnore) return wep.bonuses.bleedResistIgnore;
+  if(type==='poison' && (wep.bonuses.toxicResistIgnore||wep.bonuses.poisonResistIgnore)) return wep.bonuses.toxicResistIgnore||wep.bonuses.poisonResistIgnore;
+  if(type==='burn' && wep.bonuses.burnResistIgnore) return wep.bonuses.burnResistIgnore;
+  return 0;
+}
+function attemptApplyEffect(m,type,baseChance,stacks=1){
+  const signMark = G.bonus?.signMarkOn ? .15 : 0;
+  let chance = baseChance + (G.bonus?.[type+'Chance']||0) + signMark;
+  chance += (G.bonus?.poisonChanceDoubleOnCrit && lastHitWasCrit && type==='poison') ? baseChance : 0;
+  chance = Math.max(0, Math.min(1, chance * (1 - effectResistAdjusted(type,m))));
+  if(Math.random()<chance){ addEffect(m,type, 5, stacks); floatAt('#enemyFloat', (type==='bleed'?'🩸':type==='poison'?'☠️':'🔥')+' '+type, 'dot'); }
+}
+function applyDoTTicks(m){
+  if(!m?.effects?.length) return;
+  const fastBleed = G.bonus?.bleedTickFaster ? 1.25 : 1;
+  const dotBoost = 1 + (G.bonus?.dotDamageMult||0) + (G.bonus?.poisonDotBoost||0) + (G.bonus?.bleedDamageMult? (G.bonus.bleedDamageMult-1) : 0);
+
+  let totalDot=0;
+  m.effects.forEach(e=>{
+    if(e.dur<=0) return;
+    const resist = effectResistAdjusted(e.type,m);
+    const base = e.type==='bleed'?5:e.type==='poison'?6:7;
+    let tick = Math.round(base * e.stacks * (1-resist) * dotBoost);
+    if(e.type==='bleed' && fastBleed>1) tick = Math.round(tick*fastBleed);
+    m.hp -= tick; totalDot += tick;
+
+    if(e.type==='poison' && G.bonus?.poisonHealOnTick){ const heal = Math.max(1, Math.floor(tick*0.05)); G.hp = Math.min(hpMax(), G.hp + heal); floatAt('#playerFloat', `+${heal}`, 'heal'); }
+    if(e.type==='poison' && m.hp/m.hpMax<.15 && Math.random()< (G.bonus?.poisonExecute||0)){ m.hp=0; }
+    e.dur -= 1;
+  });
+  if(totalDot>0) floatAt('#enemyFloat', `-${totalDot}`, 'dot');
+  m.effects = m.effects.filter(e=>e.dur>0);
+}
+
+function calcPlayerDmg(enemy){
+  let dmg=G.baseDPS||10;
+  const steel=getEquippedWeapon('steel'), silver=getEquippedWeapon('silver');
+  const weapon= steel || silver;
+  let as=1+(G?.bonus?.attackSpeed||0);
+  let critChance = .05 + (weapon?.bonuses?.critChance||0) + (G?.bonus?.critChance||0);
+  let critMulti = 1.5 + (weapon?.bonuses?.critMulti||0) + (G?.bonus?.critMulti||0);
+  if(weapon?.bonuses?.damage) dmg*=weapon.bonuses.damage;
+  if(G?.bonus?.dpsBoost) dmg*= (1+G.bonus.dpsBoost);
+  if(G?.bonus?.signSaturation && signBuffTicks>0) dmg=Math.round(dmg*1.10);
+  if(G?.bonus?.attackSpeedVsBleeding && enemy.effects?.some(e=>e.type==='bleed')) as*=1.05;
+  if(G?.bonus?.attackSpeedPerPoison){ const pCount= enemy.effects?.some(e=>e.type==='poison') ? 1 : 0; as*= (1 + Math.min(3,pCount)*.05); }
+
+  if(weapon?.bonuses?.scalingDamage){ dmg = Math.round(dmg * (1 + Math.min(0.5, G.stats.perfectStacks*weapon.bonuses.scalingDamage))); }
+
+  if(enemy.effects?.some(e=>e.type==='bleed')){ critChance += (G.bonus?.critVsBleeding||0); critMulti += (G.bonus?.critDmgVsBleeding||0); }
+
+  if(weapon?.bonuses?.armorPen){ enemy.damageReduction=Math.max(0,(enemy.damageReduction||0)-weapon.bonuses.armorPen); }
+
+  if(G?.bonus?.damageVsBleeding && enemy.effects?.some(e=>e.type==='bleed')) dmg=Math.round(dmg*(1+G.bonus.damageVsBleeding));
+  if(G?.bonus?.poisonDamageMult && enemy.effects?.some(e=>e.type==='poison')) dmg=Math.round(dmg*(1+G.bonus.poisonDamageMult));
+
+  const diffDR=[0,.05,.10,.15][G.difficulty||0]; if(diffDR) enemy.damageReduction=Math.min(0.6,(enemy.damageReduction||0)+diffDR);
+
+  if(enemy?.damageReduction) dmg=Math.max(1, Math.round(dmg*(1-enemy.damageReduction)));
+
+  dmg=Math.round(dmg*as);
+
+  const crit = Math.random()<critChance; 
+  if(crit) {
+    dmg=Math.round(dmg*critMulti);
+    G.stats.criticalHits = (G.stats.criticalHits || 0) + 1;
+  }
+
+  if(crit && weapon?.bonuses?.bleedOnCrit) attemptApplyEffect(enemy,'bleed',1,1);
+
+  if(crit && weapon?.bonuses?.onCritRandomStatus){ if(Math.random()<weapon.bonuses.onCritRandomStatus){ const pick=['bleed','poison','burn'][Math.floor(Math.random()*3)]; attemptApplyEffect(enemy,pick,.9,1); } }
+
+  if(weapon?.bonuses?.poisonChance) attemptApplyEffect(enemy,'poison', weapon.bonuses.poisonChance, 1);
+  if(weapon?.bonuses?.bleedChance)  attemptApplyEffect(enemy,'bleed',  weapon.bonuses.bleedChance, 1);
+  if(weapon?.bonuses?.burnChance)   attemptApplyEffect(enemy,'burn',   weapon.bonuses.burnChance, 1);
+
+  G.stats.totalDamageDealt = (G.stats.totalDamageDealt || 0) + dmg;
+  window.lastHitWasCrit = crit;
+  return { dmg, crit, weapon };
+}
+
+let lastHitWasCrit=false;
+function fightTick(){
+  const m=G?.combat?.enemy; if(!m) return;
+
+  let enemyActs = true;
+  if(stunTicks>0){ stunTicks--; enemyActs=false; }
+
+  const {dmg,crit,weapon}=calcPlayerDmg(m);
+  m.hp-=dmg; floatAt('#enemyFloat', `${crit?'💥 ':''}-${dmg}`, crit?'crit':'dmg');
+  applyDoTTicks(m);
+  if(m.hp<=0){ handleEnemyDeath(true); return; }
+
+  if(enemyActs){
+    const diffMult=[0.7,1.0,1.3,1.6][G.difficulty||1];
+    let swing=(m.dps||8) * 0.5 * diffMult;
+    if(confuseTicks>0){ swing*=0.75; confuseTicks--; }
+    if(slowTicks>0){ swing*=0.85; slowTicks--; }
+    swing = Math.max(1, Math.round(swing));
+    if(G.bonus?.quenShield && G.bonus.quenShield>0){
+      const absorbed = Math.min(G.bonus.quenShield, swing);
+      G.bonus.quenShield -= absorbed; swing -= absorbed;
+      if(G.bonus?.quenReflect && absorbed>0){ m.hp -= Math.round(absorbed * G.bonus.quenReflect); }
+      if(G.bonus?.quenLifesteal && absorbed>0){ const heal=Math.round(absorbed*0.25); G.hp=Math.min(hpMax(), G.hp+heal); floatAt('#playerFloat', `+${heal}`, 'heal'); }
+    }
+    if(swing>0){
+      G.hp -= swing; floatAt('#playerFloat', `-${swing}`, 'dmg');
+      if(G.hp<=0){ handlePlayerDeath(); return; }
+    }
+  }
+
+  if(signBuffTicks>0) signBuffTicks--;
+
+  if(weapon?.bonuses?.scalingDamage){ if(crit) G.stats.perfectStacks++; }
+
+  if(lastEnemyHp!=null && m.hp<lastEnemyHp){ $('#enemyCard')?.style.setProperty('animation','shake .2s'); }
+  if(lastPlayerHp!=null && G.hp<lastPlayerHp){ $('#playerCard')?.style.setProperty('animation','shake .2s'); }
+  setTimeout(()=>{ $('#enemyCard')?.style.removeProperty('animation'); $('#playerCard')?.style.removeProperty('animation'); },280);
+
+  lastEnemyHp=m.hp; lastPlayerHp=G.hp; viewCombat();
+}
+
+function enterCombat(enemy){
+  G.hp = hpMax();
+  G.vigor = vigorMax();
+
+  G.bonus._signBuffTicks = 0;
+  G.bonus._quenShield = 0;
+  G.bonus._regenTicks = 0;
+  G.stats.perfectStacks = 0;
+
+  enemy.hpMax = enemy.hp;
+  enemy.effects = [];
+
+  const wep = enemy.boss ? getEquippedWeapon('silver') : getEquippedWeapon('steel');
+  if(wep) checkQuestProgress('useWeapon', { kind: wep.type });
+
+  // Update bestiary
+  updateBestiary(enemy.id);
+
+  G.combat = { enemy };
+  clearInterval(loop);
+  loop = setInterval(fightTick, COMBAT_TICK_MS);
+  switchView('combat');
+}
+
+function showResultModal(title, bodyHtml, good=true){
+  const inner=$('#resultModalInner');
+  inner.innerHTML = `
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-weight:800; color:${good?'var(--ok)':'var(--bad)'}">${title}</div>
+      <button class="btn" onclick="closeResult()">Close</button>
+    </div>
+    <div class="divider"></div>
+    ${bodyHtml}
+    <div class="divider"></div>
+    <div class="grid2">
+      <button class="btn" onclick="switchView('hunts')">Back to Hunts</button>
+      <button class="btn" onclick="switchView('quests')">To Quests</button>
+    </div>`;
+  $('#resultModal').style.display='flex';
+}
+function closeResult(){ $('#resultModal').style.display='none'; }
+
+function handleEnemyDeath(bleedingKill=false){
+  clearInterval(loop);
+  const reward=G.currentContract?.reward || { parts:2, gold:40, mutagenChance:.02, xp:20 };
+  const enemyId=G.currentContract?.enemy?.id;
+  G.mats.part += reward.parts; G.gold += reward.gold;
+  const mut = Math.random()< (reward.mutagenChance||.02); if(mut) G.items.mutagen=(G.items.mutagen||0)+1;
+  const xp = reward.xp || Math.max(20, Math.round((G.currentContract?.level||1)*12));
+  gainXP(xp);
+
+  if(bleedingKill && G.bonus?.vigorOnBleedingKill){ const add=Math.round(0.10*vigorMax()); G.vigor=Math.min(vigorMax(), G.vigor+add); }
+
+  maybeDropTrophy(G.currentContract?.enemy||{});
+
+  const boss = DATA.bossMonsters.find(b=>b.id===G.currentContract?.enemy?.id);
+  if(boss){
+    G.stats.bossesKilled = (G.stats.bossesKilled || 0) + 1;
+    const rolls=BOSS_UNIQUES[boss.id]||[];
+    rolls.forEach(uid=>{
+      if(Math.random()<0.5){
+        G.schematics[uid]=true;
+        if(!G.inventory.includes(uid)) G.inventory.push(uid);
+        toast('Schematic unlocked: '+(DATA.swords.find(s=>s.id===uid)?.name||uid),'good');
+      }
+    });
+  }
+
+  G.stats.totalKills++; G.combat=null; saveGame();
+
+  if(boss) {
+    checkQuestProgress('bossKill', { id: enemyId });
+  } else {
+    checkQuestProgress('huntWin');
+  }
+
+  showResultModal('Victory', `<div class="row"><div class="badge">🔧 ${reward.parts}</div><div class="badge">💰 ${reward.gold}</div><div class="badge">🧪 ${mut?1:0}</div><div class="badge">⭐ ${xp} XP</div></div>`, true);
+  
+  // Auto-battle: schedule next fight
+  if(G.autoBattle) {
+    scheduleNextAutoBattle();
+  }
+}
+function handlePlayerDeath(){
+  clearInterval(loop); G.combat=null; saveGame();
+  showResultModal('Defeated', `<div class="muted">Patch up and try again. HP & Vigor reset next fight.</div>`, false);
+  
+  // Auto-battle: schedule next fight even after loss
+  if(G.autoBattle) {
+    scheduleNextAutoBattle();
+  }
+}
+
+function castSign(id){
+  const s=DATA.signs.find(x=>x.id===id); if(!s) return;
+  let cost=s.cost;
+  const signCostMult = Math.min(1, (G.bonus?.signCostMult||1) * (SCHOOL[G.school||'']?.passive?.signCostMult||1));
+  cost = Math.ceil(cost * (signCostMult||1));
+  if(G.vigor<cost) return;
+  G.vigor -= cost;
+  G.stats.signsCast = (G.stats.signsCast || 0) + 1;
+  const m = G?.combat?.enemy; if(!m) return;
+
+  checkQuestProgress('castSign', { id: id });
+
+  if(G.bonus?.signSaturation){ signBuffTicks=3; }
+
+  const surge = G.bonus?.signRandomStatus||0;
+
+  if(id==='igni'){
+    attemptApplyEffect(m,'burn', .7, 1);
+    if(surge && Math.random()<surge){ const pick=['bleed','poison'][Math.floor(Math.random()*2)]; attemptApplyEffect(m,pick,.9,1); }
+  }
+  if(id==='quen'){
+    const baseShield=35;
+    G.bonus.quenShield = (G.bonus.quenShield||0) + baseShield;
+    if(G.bonus?.quenReflect == null && G.bonus?.signsReflect) G.bonus.quenReflect=0.10;
+    if(G.bonus?.quenLifesteal == null && G.bonus?.quenLS3s)   G.bonus.quenLifesteal=true;
+  }
+  if(id==='aard'){
+    stunTicks=1;
+  }
+  if(id==='yrden'){
+    m.resist.bleed=Math.max(0,(m.resist.bleed||0)-.15 - (G.bonus?.yrdenPower||0));
+    m.resist.poison=Math.max(0,(m.resist.poison||0)-.15 - (G.bonus?.yrdenPower||0));
+    m.resist.burn=Math.max(0,(m.resist.burn||0)-.15 - (G.bonus?.yrdenPower||0));
+    slowTicks=2 + (G.bonus?.yrdenSlowMore?1:0);
+  }
+  if(id==='axii'){
+    confuseTicks=2;
+    if(surge && Math.random()<surge){ const pick=['bleed','poison','burn'][Math.floor(Math.random()*3)]; attemptApplyEffect(m,pick,.9,1); }
+  }
+  if(G.bonus?.signMarkOn) G.bonus.signMarkOn=true;
+
+  viewCombat();
+}
+
+/* ===================== BESTIARY SYSTEM ===================== */
+function updateBestiary(enemyId) {
+  if(!G.bestiary) G.bestiary = {};
+  if(!G.bestiary[enemyId]) {
+    G.bestiary[enemyId] = { kills: 0, discovered: true };
+    toast('New bestiary entry!', 'good');
+  }
+}
+
+function incrementBestiaryKill(enemyId) {
+  if(!G.bestiary) G.bestiary = {};
+  if(!G.bestiary[enemyId]) G.bestiary[enemyId] = { kills: 0, discovered: true };
+  G.bestiary[enemyId].kills++;
+}
+
+function viewBestiary() {
+  const allMonsters = [...DATA.monsters, ...DATA.bossMonsters];
+  const discovered = allMonsters.filter(m => G.bestiary?.[m.id]?.discovered);
+  const undiscovered = allMonsters.filter(m => !G.bestiary?.[m.id]?.discovered);
+  
+  const completion = allMonsters.length > 0 ? Math.round((discovered.length / allMonsters.length) * 100) : 0;
+
+  let html = `<div class="section">
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <div style="font-weight:800; font-size:18px">📖 Bestiary</div>
+      <div class="badge">${completion}% Complete</div>
+    </div>
+    <div class="divider"></div>`;
+
+  if(discovered.length > 0) {
+    html += `<div style="font-weight:700; margin-bottom:8px">Discovered (${discovered.length})</div>`;
+    discovered.forEach(monster => {
+      const entry = G.bestiary[monster.id];
+      const kills = entry?.kills || 0;
+      html += `<div class="bestiary-entry discovered">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <div style="font-weight:800">${monster.ico} ${monster.name}</div>
+            <div class="muted" style="font-size:12px">${monster.category}${monster.boss ? ' • BOSS' : ''}</div>
+          </div>
+          <div class="badge">💀 ${kills}</div>
+        </div>
+        <div class="progress-text">HP: ${monster.baseHP} • DPS: ${monster.baseDPS}</div>
+        <div class="progress-text">Resists: 🩸${Math.round((monster.resist.bleed||0)*100)}% ☠️${Math.round((monster.resist.poison||0)*100)}% 🔥${Math.round((monster.resist.burn||0)*100)}%</div>
+      </div>`;
+    });
+  }
+
+  if(undiscovered.length > 0) {
+    html += `<div class="divider"></div>`;
+    html += `<div style="font-weight:700; margin-bottom:8px">Unknown (${undiscovered.length})</div>`;
+    undiscovered.forEach(() => {
+      html += `<div class="bestiary-entry">
+        <div style="font-weight:800">??? Unknown Creature</div>
+        <div class="muted" style="font-size:12px">Hunt to discover</div>
+      </div>`;
+    });
+  }
+
+  html += `</div>`;
+  $('#view').innerHTML = html;
+}
+window.viewBestiary = viewBestiary;
+
+/* ===================== STATS VIEW ===================== */
+function viewStats() {
+  const stats = G.stats || {};
+  const prestigeScore = calculatePrestigeScore();
+  const canPrestige = G.lvl >= 20 && G.stats.totalKills >= 50;
+
+  let html = `<div class="section">
+    <div style="font-weight:800; font-size:18px; margin-bottom:12px">📊 Statistics</div>
+    
+    <div class="card ${canPrestige ? 'prestige-ready' : ''}">
+      <div style="font-weight:800; margin-bottom:8px">Combat Stats</div>
+      <div class="stat-item">
+        <span class="stat-label">Total Kills</span>
+        <span class="stat-value">${stats.totalKills || 0}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Boss Kills</span>
+        <span class="stat-value">${stats.bossesKilled || 0}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Critical Hits</span>
+        <span class="stat-value">${stats.criticalHits || 0}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total Damage Dealt</span>
+        <span class="stat-value">${(stats.totalDamageDealt || 0).toLocaleString()}</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div style="font-weight:800; margin-bottom:8px">Alchemy & Magic</div>
+      <div class="stat-item">
+        <span class="stat-label">Potions Used</span>
+        <span class="stat-value">${stats.potionsUsed || 0}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Signs Cast</span>
+        <span class="stat-value">${stats.signsCast || 0}</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div style="font-weight:800; margin-bottom:8px">Progression</div>
+      <div class="stat-item">
+        <span class="stat-label">Current Level</span>
+        <span class="stat-value">${G.lvl}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Prestige Count</span>
+        <span class="stat-value">${G.prestige.count || 0}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Sigils Earned</span>
+        <span class="stat-value">${G.prestige.sigils || 0}</span>
+      </div>
+    </div>`;
+
+  if(canPrestige) {
+    html += `<div class="card prestige-ready" style="margin-top:12px">
+      <div style="font-weight:800; margin-bottom:8px; color:var(--gold)">✨ Prestige Available!</div>
+      <div class="muted" style="font-size:13px; margin-bottom:8px">Reset progress to earn ${prestigeScore} sigils and permanent bonuses</div>
+      <button class="btn full" onclick="confirmPrestige()">Prestige (+${prestigeScore} Sigils)</button>
+    </div>`;
+  }
+
+  html += `</div>`;
+  $('#view').innerHTML = html;
+}
+window.viewStats = viewStats;
+
+function calculatePrestigeScore() {
+  let score = 3; // Base
+  score += Math.floor(G.lvl / 5);
+  score += Math.floor(G.stats.totalKills / 20);
+  score += G.stats.bossesKilled || 0;
+  return score;
+}
+
+function confirmPrestige() {
+  if(confirm('Prestige will reset your progress but grant permanent bonuses. Continue?')) {
+    performPrestige();
+  }
+}
+
+function performPrestige() {
+  const sigilsGained = calculatePrestigeScore();
+  G.prestige.sigils += sigilsGained;
+  G.prestige.count++;
+  
+  // Keep these
+  const keepSchool = G.school;
+  const keepMutations = {...G.mutations};
+  const keepPrestige = {...G.prestige};
+  const keepBestiary = {...G.bestiary};
+  
+  // Reset everything else
+  newGame();
+  
+  // Restore kept items
+  G.school = keepSchool;
+  G.mutations = keepMutations;
+  G.prestige = keepPrestige;
+  G.bestiary = keepBestiary;
+  
+  applySetBonuses();
+  saveGame();
+  toast(`Prestiged! +${sigilsGained} Sigils`, 'good');
+  switchView('board');
+}
+
+/* ===================== BOARD ===================== */
+function levelColor(){ return '#9ef3ae'; }
+function viewBoard(){
+  if(!G.school) return viewSchoolPicker();
+
+  const secHtml = SECONDARY_VIEWS.map(v =>
+    `<button class="btn" onclick="switchView('${v.id}')">${v.ico} ${v.name}</button>`
+  ).join('');
+
+  const sch = SCHOOL[G.school];
+  const canPrestige = G.lvl >= 20 && G.stats.totalKills >= 50;
+
+  $('#view').innerHTML = `<div class="section">
+    <div class="card ${canPrestige ? 'prestige-ready' : ''}">
+      <div class="row" style="justify-content:space-between; align-items:flex-start">
+        <div class="row" style="gap: 12px">
+          <span style="font-size:40px; line-height:1; margin-top:-4px">${sch.ico}</span>
+          <div>
+            <div style="font-weight:800; font-size:16px">${sch.name}</div>
+            <div class="muted" style="font-size:13px">Level <b style="color:${levelColor()}">${G.lvl}</b></div>
+            ${G.prestige.count > 0 ? `<div class="muted" style="font-size:11px">✨ Prestige ${G.prestige.count}</div>` : ''}
+          </div>
+        </div>
+        <div class="badge">SP ${G.skillPoints}</div>
+      </div>
+      <div class="divider"></div>
+      <div class="row" style="font-size:12px; justify-content:space-between">
+        <div class="muted">HP</div>
+        <div class="muted">${Math.floor(G.hp)} / ${hpMax()}</div>
+      </div>
+      ${bar(G.hp, hpMax())}
+      <div class="row" style="font-size:12px; justify-content:space-between; margin-top:6px">
+        <div class="muted">XP</div>
+        <div class="muted">${G.xp} / ${G.xpTo}</div>
+      </div>
+      ${xp_bar(G.xp, G.xpTo)}
+      <div class="row" style="margin-top:12px; flex-wrap:wrap; font-size:12px">
+        <div class="badge">💰 ${G.gold}</div>
+        <div class="badge">🔧 ${G.mats.part}</div>
+        <div class="badge">🧪 ${G.items.mutagen||0}</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:8px">
+        <div style="font-weight:800">Auto-Battle</div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${G.autoBattle ? 'checked' : ''} onchange="toggleAutoBattle()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="muted" style="font-size:12px">Automatically hunt enemies while idle</div>
+      ${G.autoBattle ? `<div class="muted" style="font-size:11px; margin-top:4px">⚔️ Active - Fighting every ${G.settings.autoBattleDelay/1000}s</div>` : ''}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">Utilities</div>
+      <div class="grid2">
+        ${secHtml}
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="card">
+      <div style="font-weight:800;margin-bottom:6px">Difficulty</div>
+      <div class="row"><span class="pill">Mode: <b id="diffLabel"></b></span></div>
+      <input type="range" min="0" max="3" value="${G.difficulty}" oninput="setDifficulty(this.value)" />
+      <div class="muted" style="font-size:12px;margin-top:6px">Affects enemy stats, mods, and rewards.</div>
+    </div>
+  </div>`;
+  setDifficulty(G.difficulty,true);
+}
+
+function viewSchoolPicker(){
+  $('#view').innerHTML = `<div class="section">
+    <div class="card">
+      <div style="font-weight:800; font-size:18px; margin-bottom:8px">Choose Your School</div>
+      <div class="grid2">
+        ${Object.entries(SCHOOL).map(([k,v])=>`
+          <button class="btn" onclick="pickSchool('${k}')">${v.ico} ${v.name}</button>
+        `).join('')}
+      </div>
+      <div class="divider"></div>
+      <div class="muted" style="font-size:12px">Each school grants a passive bonus and a badge on your HUD.</div>
+    </div>
+  </div>`;
+}
+function pickSchool(k){ G.school=k; applySetBonuses(); saveGame(); toast(`${SCHOOL[k].name} chosen`,'good'); viewBoard(); }
+
+window.viewBoard=viewBoard;
+window.setDifficulty=function(v,silent){
+  G.difficulty=Number(v);
+  const label=['Chill','Normal','Tough','Brutal'][G.difficulty]||'Normal';
+  const el=$('#diffLabel'); if(el) el.textContent=label;
+  if(!silent) saveGame();
+};
+
+/* ===================== COMBAT VIEW ===================== */
+function statusBadges(m){
+  if(!m.effects?.length) return '<div class="muted" style="font-size:12px">No status</div>';
+  return `<div class="statusRow">`+m.effects.map(e=>{
+    const ico = e.type==='bleed'?'🩸':e.type==='poison'?'☠️':'🔥';
+    return `<span class="status"><i>${ico}</i>${e.type} ×${e.stacks} <span class="muted">(${e.dur})</span></span>`;
+  }).join('')+`</div>`;
+}
+function viewCombat(){
+  const m=G?.combat?.enemy;
+  if(!m){ $('#view').innerHTML=`<div class="section card">No active combat. Pick a contract.</div>`; return; }
+  $('#view').innerHTML = `
+    <div class="section">
+      <div class="card" id="enemyCard">
+        <div style="font-weight:800;color:var(--gold);font-size:16px">${m.ico||'💀'} ${m.name}</div>
+        <div class="muted" style="font-size:12px">Enemy HP</div>
+        ${bar(m.hp, m.hpMax, true)}
+        <div id="enemyFloat"></div>
+        <div class="badge">💀 ${Math.max(0,Math.floor(m.hp))} / ${m.hpMax}</div>
+        ${statusBadges(m)}
+      </div>
+
+      <div class="card" style="margin-top:12px" id="playerCard">
+        <div class="muted" style="font-size:12px">Your HP</div>
+        ${bar(G.hp, hpMax(), false)}
+        <div id="playerFloat"></div>
+        <div class="badge">❤️ ${Math.max(0,Math.floor(G.hp))} / ${hpMax()}</div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="row" style="justify-content:space-between">
+          <div>Vigor: ${Math.floor(G.vigor)}</div>
+          <div class="badge">Items: 💣 ${G.items.bomb||0}  🍷 ${G.items.swallow||0}</div>
+        </div>
+        <div class="divider"></div>
+        <div class="grid3">
+          ${DATA.signs.map(s=>`<button class="btn" ${G.vigor>=Math.ceil(s.cost*(G.bonus?.signCostMult||1))?'':'disabled'} onclick="castSign('${s.id}')">${s.name} (${Math.ceil(s.cost*(G.bonus?.signCostMult||1))})</button>`).join('')}
+          <button class="btn" ${G.items.bomb>0?'':'disabled'} onclick="useBomb()">💣 Bomb</button>
+          <button class="btn" ${G.items.swallow>0?'':'disabled'} onclick="useSwallow()">🍷 Swallow</button>
+        </div>
+      </div>
+    </div>`;
+}
+window.viewCombat=viewCombat;
+
+function useBomb(){
+  if((G.items.bomb||0)<=0) return toast('No bombs','bad');
+  const m=G?.combat?.enemy; if(!m) return;
+  G.items.bomb--;
+  const dmg=35; m.hp-=dmg; floatAt('#enemyFloat', `-${dmg}`, 'dmg');
+  attemptApplyEffect(m,'burn', .5, 1);
+  G.stats.totalDamageDealt = (G.stats.totalDamageDealt || 0) + dmg;
+  viewCombat();
+}
+function useSwallow(){
+  if((G.items.swallow||0)<=0) return toast('No Swallow','bad');
+  if(!G?.combat?.enemy) return;
+  G.items.swallow--;
+  G.stats.potionsUsed = (G.stats.potionsUsed || 0) + 1;
+  const amount=45; const before=G.hp;
+  G.hp=Math.min(hpMax(), (G.hp||hpMax())+amount);
+  const healed=G.hp-before; if(healed>0){ floatAt('#playerFloat', `+${healed}`, 'heal'); toast('Swallow consumed','good'); } else { toast('HP already full','bad'); }
+  viewCombat();
+}
+
+/* ===================== FORGE ===================== */
+function canAfford(needs){ if(!needs) return true; return (G.mats.part>=(needs.part||0)) && (G.gold>=(needs.gold||0)) && ((G.items.mutagen||0)>=(needs.mutagen||0)); }
+function spend(needs){ if(!needs) return; if(needs.part) G.mats.part-=needs.part; if(needs.gold) G.gold-=needs.gold; if(needs.mutagen) G.items.mutagen-=needs.mutagen; }
+function affordText(needs){ const lack=[]; if(G.mats.part<(needs.part||0)) lack.push('parts'); if(G.gold<(needs.gold||0)) lack.push('gold'); if((G.items.mutagen||0)<(needs.mutagen||0)) lack.push('mutagen'); return lack.length?`Missing ${lack.join(', ')}`:'Ready'; }
+
+function renderForgeItem(s){
+  const owned=!!G.schematics[s.id], equipped=(G.gear[s.type]===s.id), afford=canAfford(s.needs);
+  const bonusTxt=Object.entries(s.bonuses).map(([k,v])=>{
+    if(typeof v==='boolean') return k;
+    if(typeof v==='number' && v<2 && v>0) return `${k}: ${Math.round(v*100)}%`;
+    return `${k}: ${v}`;
+  }).join(', ');
+  return `<div class="card ${R(s.rarity)}"><div style="font-weight:800">${s.name}</div>
+    <div class="muted" style="font-size:12px">${bonusTxt||'—'}</div>
+    <div style="font-size:12px;color:var(--gold);margin-top:4px">🦴 ${s.needs?.part||0}  💰 ${s.needs?.gold||0} ${s.needs?.mutagen?(' 🧪'+s.needs.mutagen):''}</div>
+    <div class="row" style="margin-top:8px">
+      ${owned?`<button class="btn" onclick="equip('${s.type}','${s.id}')">${equipped?'Equipped':'Equip'}</button>`:`<button class="btn" ${afford?'':'data-disabled="1"'} onclick="${afford?`craftSchematic('${s.id}')`:`explainCant('${s.id}')`}">${afford?'Craft':'Cannot craft'}</button>`}
+    </div></div>`;
+}
+
+function viewForge(){
+  const cheap=DATA.swords.filter(s=>s.id.startsWith('training_'));
+  const rest=DATA.swords.filter(s=>!s.id.startsWith('training_'));
+  $('#view').innerHTML=`<div class="section">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div style="font-weight:800">Forge</div>
+      <div class="badge">🦴 ${G.mats.part}  💰 ${G.gold}  🧪 ${G.items.mutagen||0}</div>
+    </div>
+    <div class="divider"></div>
+    <div class="card"><div style="font-weight:800;margin-bottom:6px">Starter Blueprints</div><div class="grid2">${cheap.map(renderForgeItem).join('')}</div></div>
+    <div class="divider"></div>
+    <div class="card"><div style="font-weight:800;margin-bottom:6px">Advanced</div><div class="grid2">${rest.map(renderForgeItem).join('')}</div></div>
+    <div class="divider"></div>
+    <div class="card"><div style="font-weight:800;margin-bottom:6px">Scrap & Convert</div>
+      <div class="grid2">
+        <button class="btn" onclick="convertGoldToParts()">💰 → 🔧 Buy Parts (50g → +3)</button>
+        <button class="btn" onclick="scrapRandom()">♻️ Scrap Random Inventory (+2–5 parts)</button>
+      </div>
+    </div>
+  </div>`;
+}
+window.viewForge=viewForge;
+function explainCant(id){ const s=DATA.swords.find(x=>x.id===id); if(!s) return; toast(affordText(s.needs),'bad'); }
+function craftSchematic(id){
+  const s=DATA.swords.find(x=>x.id===id) || DATA.armorSets.flatMap(as=>as.pieces).find(p=>p.id===id);
+  if(!s) return;
+  if(!canAfford(s.needs)) return toast(affordText(s.needs),'bad');
+  spend(s.needs);
+  G.schematics[id]=true;
+  if(!G.inventory.includes(id)) G.inventory.push(id);
+  checkQuestProgress('craft', { item: id });
+  toast('Crafted: '+s.name,'good'); saveGame(); viewForge();
+}
+function equip(slot,id){ G.gear[slot]=id; applySetBonuses(); saveGame(); toast('Equipped','good'); viewForge(); }
+function convertGoldToParts(){ if(G.gold<50) return toast('Need 50 gold','bad'); G.gold-=50; G.mats.part+=3; saveGame(); viewForge(); }
+function scrapRandom(){
+  if(!(G.inventory||[]).length) return toast('No items to scrap','bad');
+  const id=G.inventory[Math.floor(Math.random()*G.inventory.length)];
+  const idx=G.inventory.indexOf(id); if(idx>=0) G.inventory.splice(idx,1);
+  const gain=2+Math.floor(Math.random()*4); G.mats.part+=gain;
+  if(Object.values(G.gear).includes(id)){ Object.keys(G.gear).forEach(k=>{ if(G.gear[k]===id) G.gear[k]=null; }); }
+  saveGame(); toast('Scrapped → +'+gain+' parts','good'); viewForge();
+}
+
+/* ===================== TROPHIES ===================== */
+function maybeDropTrophy(enemy){
+  const roll=Math.random();
+  let key=null;
+  if(enemy.category==='Beast') key='beast_head';
+  else if(enemy.category==='Necrophage') key='necro_head';
+  else if(enemy.category==='Specter') key='specter_head';
+  else if(enemy.category==='Wild Hunt') key='hunt_head';
+  if(key && roll<0.15){
+    G.items.trophy=(G.items.trophy||0)+1;
+    if(!G.gear.trophy){ G.gear.trophy=key; applySetBonuses(); }
+    toast('Trophy: '+(DATA.trophies[key]?.name||'Trophy'),'good');
+  }
+}
+
+/* ===================== MUTATIONS UI/LOGIC ===================== */
+let activeMutationTree="bloodcraft";
+function viewMutationsTab(){
+  const sigils=G?.prestige?.sigils||0, mutagens=G?.items?.mutagen||0;
+  const tree = DATA.mutationTrees.find(t=>t.treeId===activeMutationTree) || DATA.mutationTrees[0];
+  $('#view').innerHTML=`<div class="section">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-weight:800">Mutations</div>
+      <div class="row">
+        <div class="badge">🧬 Sigils ${sigils}</div>
+        <div class="badge">🧪 ${mutagens}</div>
+        <div class="badge">SP ${G.skillPoints}</div>
+      </div>
+    </div>
+    <div class="row" style="gap:6px; overflow:auto">${DATA.mutationTrees.map(t=>`<button class="btn ${activeMutationTree===t.treeId?'active':''}" onclick="setMutationTree('${t.treeId}')">${t.name}</button>`).join('')}</div>
+    <div class="divider"></div>
+    ${tree.nodes.map(renderMutationCard).join('')}
+  </div>`;
+}
+window.viewMutationsTab=viewMutationsTab;
+function setMutationTree(id){ activeMutationTree=id; viewMutationsTab(); }
+function renderMutationCard(n){
+  const owned=!!G.mutations[n.id];
+  const reqMet=(n.requires||[]).every(r=>!!G.mutations[r]);
+  const canResource = ((G.items.mutagen||0)>=(n.cost?.mutagen||0)) && ((G.prestige.sigils||0)>=(n.cost?.perk||0));
+  const canSP = G.skillPoints>0;
+  const can = !owned && reqMet && (canResource || canSP);
+  const tag = owned?'Unlocked':(reqMet?'Available':`Requires: ${n.requires.join(', ')||'-'}`);
+  return `<div class="card ${owned?'owned':reqMet?'':'locked'}" style="margin-bottom:10px">
+    <div style="font-weight:800">${n.name}</div>
+    <div class="muted" style="font-size:13px">${n.desc}</div>
+    <div class="muted" style="font-size:12px">${tag}</div>
+    ${!owned?`
+      <div class="row" style="gap:8px;margin-top:6px">
+        <button class="btn" ${canResource?'':'disabled'} onclick="unlockMutation('${n.id}','res')">Unlock (🧪/🧬)</button>
+        <button class="btn" ${canSP?'':'disabled'} onclick="unlockMutation('${n.id}','sp')">Unlock (SP)</button>
+      </div>`:''}
+  </div>`;
+}
+function unlockMutation(id, mode){
+  const node = DATA.mutationTrees.flatMap(t=>t.nodes).find(n=>n.id===id); if(!node) return;
+  const reqMet=(node.requires||[]).every(r=>!!G.mutations[r]); if(!reqMet) return toast('Requirements not met','bad');
+  if(mode==='res'){
+    if((G.items.mutagen||0)<node.cost.mutagen) return toast('Not enough mutagen','bad');
+    if((G.prestige.sigils||0)<node.cost.perk) return toast('Not enough sigils','bad');
+    G.items.mutagen-=node.cost.mutagen; G.prestige.sigils-=node.cost.perk;
+  }else{
+    if(G.skillPoints<=0) return toast('No skill points','bad');
+    G.skillPoints-=1;
+  }
+  G.mutations[id]=true; applyMutationEffect(id); saveGame(); toast('Unlocked: '+node.name,'good'); viewMutationsTab();
+}
+function applyMutationEffect(id){
+  G.bonus=G.bonus||{};
+  if(id==='mut_blood_1') G.bonus.critVsBleeding=(G.bonus.critVsBleeding||0)+.05;
+  if(id==='mut_blood_2') G.bonus.critDmgVsBleeding=(G.bonus.critDmgVsBleeding||0)+.25;
+  if(id==='mut_blood_3'){ G.bonus.bleedChance=(G.bonus.bleedChance||0)+.10; G.bonus.statusDuration=(G.bonus.statusDuration||0)+.05; }
+  if(id==='mut_blood_4') G.bonus.bleedStacksMax=2;
+  if(id==='mut_blood_5') G.bonus.vigorOnBleedingKill=true;
+  if(id==='mut_blood_6') G.bonus.bleedResistIgnore=(G.bonus.bleedResistIgnore||0)+.20;
+  if(id==='mut_blood_7') G.bonus.bleedTickFaster=true;
+  if(id==='mut_blood_8') G.bonus.attackSpeedVsBleeding=true;
+
+  if(id==='mut_toxin_1') G.bonus.poisonChance=(G.bonus.poisonChance||0)+.10;
+  if(id==='mut_toxin_2') G.bonus.poisonResistIgnore=(G.bonus.poisonResistIgnore||0)+.20;
+  if(id==='mut_toxin_3') G.bonus.attackSpeedPerPoison=true;
+  if(id==='mut_toxin_4') G.bonus.poisonDotBoost=(G.bonus.poisonDotBoost||0)+.10;
+  if(id==='mut_toxin_5') G.bonus.poisonChanceDoubleOnCrit=true;
+  if(id==='mut_toxin_6') G.bonus.poisonHealOnTick=true;
+  if(id==='mut_toxin_7') G.bonus.poisonSpread=true;
+  if(id==='mut_toxin_8') G.bonus.poisonExecute=.05;
+
+  if(id==='mut_sign_1') G.bonus.signCostMult=Math.min(G.bonus.signCostMult||1, .80);
+  if(id==='mut_sign_2'){ G.bonus.igniBurnMore=.10; G.bonus.aardKnock=.15; }
+  if(id==='mut_sign_3'){ G.bonus.signsReflect=true; G.bonus.yrdenSlowMore=true; }
+  if(id==='mut_sign_4') G.bonus.signSaturation=true;
+  if(id==='mut_sign_5') G.bonus.signMarkOn=true;
+  if(id==='mut_sign_6') G.bonus.quenLS3s=true;
+  if(id==='mut_sign_7') G.bonus.signRandomStatus=.10;
+  if(id==='mut_sign_8') G.bonus.signChainBonus=.20;
+}
+
+/* ===================== SET BONUSES / PASSIVES ===================== */
+function applySetBonuses(){
+  const keep = {};
+  G.bonus={ ...keep };
+
+  if(G.school && SCHOOL[G.school]?.passive){
+    const pass=SCHOOL[G.school].passive;
+    for(const k in pass){
+      const v=pass[k];
+      if(k==='damage') G.bonus.dpsBoost=(G.bonus.dpsBoost||0)+(v-1||0);
+      else if(typeof v==='number') G.bonus[k]=(G.bonus[k]||0)+v;
+      else if(typeof v==='boolean') G.bonus[k]=v;
+    }
+  }
+
+  const counts={}; const allArmor=DATA.armorSets.flatMap(s=>s.pieces);
+  for(const slot in G.gear){
+    const id=G.gear[slot]; if(!id) continue;
+    let piece = DATA.swords.find(w=>w.id===id) || allArmor.find(a=>a.id===id) || (slot==='trophy' && DATA.trophies[id]);
+    if(!piece) continue;
+
+    if(piece.set) counts[piece.set]=(counts[piece.set]||0)+1;
+
+    const bonuses = piece.bonuses || (slot==='trophy' ? DATA.trophies[id].bonuses : null);
+    if(bonuses){
+      for(const k in bonuses){
+        const v=bonuses[k];
+        if(k==='damage'){ if(typeof v==='number') G.bonus.dpsBoost=(G.bonus.dpsBoost||0)+(v-1); continue; }
+        if(typeof v==='number'){
+          if(k.endsWith('Mult')) G.bonus[k]=(G.bonus[k]||1)*v;
+          else G.bonus[k]=(G.bonus[k]||0)+v;
+        } else if(typeof v==='boolean'){ G.bonus[k]=v; }
+      }
+    }
+  }
+  DATA.armorSets.forEach(set=>{
+    const count=counts[set.setId]||0;
+    set.setBonuses.forEach(b=>{
+      if(count>=b.count){
+        for(const k in b.effect){
+          const v=b.effect[k];
+          if(typeof v==='number' && v>=1){
+            if(k.endsWith('Mult')) G.bonus[k]=(G.bonus[k]||1)*v;
+            else G.bonus[k]=(G.bonus[k]||0)+v;
+          } else if(typeof v==='number') {
+            G.bonus[k]=(G.bonus[k]||0)+v;
+          } else if(typeof v==='boolean'){ G.bonus[k]=v; }
+        }
+      }
+    });
+  });
+  
+  // Re-apply mutation effects
+  Object.keys(G.mutations).forEach(applyMutationEffect);
+}
+window.applySetBonuses = applySetBonuses;
+
+/* ===================== CONTRACTS / GENERATION ===================== */
+function getLevelDef(tier, level){ return DATA.contracts.levels.find(l=>l.tier===tier && l.level===level); }
+function shuffle(a){ return a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]); }
+function buildEnemyFrom(base,def,opts){
+  const enemy={ ...base,
+    hp:Math.round(base.baseHP*def.hpMult*(1+G.difficulty*.25)),
+    hpMax:0,
+    dps:Math.round(base.baseDPS*def.dpsMult*(1+G.difficulty*.25)),
+    resist:{...base.resist}, modifiers:[], effects:[]
+  };
+  enemy.hpMax=enemy.hp;
+  const mods = Math.min( (opts.modCount||0)+G.difficulty, DATA.modifiers.length );
+  const picks = shuffle(DATA.modifiers).slice(0,Math.max(0,mods));
+  picks.forEach(m=>{ enemy.modifiers.push(m); applyModifierToEnemy(enemy, m.effect); });
+  return { enemy, reward:{
+    parts: def.rewardParts + G.difficulty*1,
+    gold:  def.rewardGold + G.difficulty*15,
+    mutagenChance: Math.min(.9, def.mutagenChance + G.difficulty*0.02),
+    xp: 20 + (def.level||1)*10 + G.difficulty*10
+  }}; }
+function generateContract(tier, level, opts={}){
+  const def=getLevelDef(tier, level); if(!def) return null;
+  const pool=tier===6?DATA.bossMonsters:DATA.monsters;
+  const base=pool[Math.floor(Math.random()*pool.length)];
+  const {enemy,reward}=buildEnemyFrom(base,def,opts);
+  return { id:Math.floor(Math.random()*1e9), tier, level, enemy, reward };
+}
+
+function viewHunts(){
+  const maxT = unlockedTier();
+  let html = `<div class="section">
+    <div style="font-weight:800">Hunts (Tier 0)</div>
+    <div class="muted" style="font-size:12px;margin-top:4px">Difficulty affects level rolls, modifiers and rewards.</div>
+    <div class="divider"></div>`;
+
+  const lvl=Math.max(1, Math.min(10, G.lvl));
+  const cands=[
+    {label:'Novice',    lv:Math.max(1,lvl-1), mods:0},
+    {label:'Apprentice',lv:lvl,               mods:0},
+    {label:'Skirmish',  lv:Math.min(10,lvl+1),mods:1}
+  ].map(x=>({ ui:x.label, c: generateContract(0,x.lv,{modCount:x.mods})}));
+
+  cands.forEach(({ui,c})=>{
+    html += `
+      <div class="contractCard">
+        <div><b>${c.enemy.ico||'🎯'} ${ui}</b> — ${c.enemy.name} (Lv ${c.level})</div>
+        <div class="muted">HP ${c.enemy.hp} | DPS ${c.enemy.dps} | Mods ${c.enemy.modifiers.length}</div>
+        <div class="muted">Rewards: 💰 ${c.reward.gold} 🔧 ${c.reward.parts} 🧪 ${Math.round(c.reward.mutagenChance*100)}% ⭐ ${c.reward.xp}</div>
+        <div class="row" style="margin-top:6px">
+          <button class="btn" onclick="acceptContract(${c.id})">Hunt</button>
+          <button class="btn" onclick="rerollHunt()">Reroll</button>
+        </div>
+      </div>
+      ${(()=>{ window._contracts=window._contracts||{}; window._contracts[c.id]=c; return ''; })()}`;
+  });
+
+  html += `<div class="divider"></div><div style="font-weight:800">Elite Contracts</div>
+    <div class="muted" style="font-size:12px;margin-top:4px">Unlocked Tier: ${maxT}</div>`;
+
+  for(let t=1;t<=maxT && t<=5;t++){
+    const levels = Array.from({length:3}, _=> Math.max(1, Math.min(20, G.lvl + (Math.floor(Math.random()*7)-3) + G.difficulty)));
+    const contracts = levels.map(lv => generateContract(t, lv, { modCount: 1 + G.difficulty }));
+    html += `<div style="font-weight:700;margin:10px 0 6px">▶ Tier ${t}</div>`;
+    contracts.forEach(c=>{
+      if(!c) return;
+      html += `<div class="contractCard"><div><b>${c.enemy.ico||'🛡️'} ${c.enemy.name}</b> (Lv ${c.level}) — Mods ${c.enemy.modifiers.length}</div>
+        <div class="muted">💰 ${c.reward.gold} | 🔧 ${c.reward.parts} | 🧪 ${Math.round(c.reward.mutagenChance*100)}% | ⭐ ${c.reward.xp}</div>
+        <button class="btn full" onclick="acceptContract(${c.id})">Accept</button></div>`;
+      window._contracts=window._contracts||{}; window._contracts[c.id]=c;
+    });
+  }
+
+  html += `<div style="font-weight:700;margin:10px 0 6px">▶ Tier 6 — Boss ${maxT>=6?'(Unlocked)':'(Locked at Lv 26+)'}</div>`;
+  if(maxT >= 6){
+    const options = DATA.bossMonsters.map(b=>`<option value="${b.id}">${b.ico} ${b.name}</option>`).join('');
+    html += `<div class="contractCard boss">
+      <div style="font-weight:800;font-size:18px;margin-bottom:8px">Boss Contract</div>
+      <div class="row" style="gap:8px"><select id="bossSel" class="btn">${options}</select><button class="btn" onclick="genBoss()">Generate</button></div>
+      <div id="bossDetails" style="margin-top:10px"></div>
+    </div>`;
+  } else {
+    html += `<div class="contractCard boss muted">Defeat Tier 5 contracts and reach Level 26 to unlock.</div>`;
+  }
+
+  html += `</div>`;
+  $('#view').innerHTML = html;
+}
+window.viewHunts=viewHunts;
+function rerollHunt(){ viewHunts(); }
+function acceptContract(id){ const c=window._contracts?.[id]; if(!c) return; G.currentContract=c; enterCombat(c.enemy); }
+
+function unlockedTier(){ return Math.min(6, 1 + Math.floor((G.lvl-1)/5)); }
+
+function genBoss(){
+  const id=$('#bossSel')?.value; const base=DATA.bossMonsters.find(b=>b.id===id)||DATA.bossMonsters[0];
+  const def=getLevelDef(6,1);
+  const {enemy,reward}=buildEnemyFrom(base,def,{modCount:2+G.difficulty});
+  G.currentContract={ id:Math.floor(Math.random()*1e9), tier:6, level:1, enemy, reward };
+  $('#bossDetails').innerHTML = `<div class="card"><div style="font-weight:800">${enemy.ico} ${enemy.name}</div>
+    <div>HP: ${enemy.hp}</div><div>DPS: ${enemy.dps}</div>
+    <div style="margin-top:6px;font-weight:700">Modifiers</div>
+    <ul class="muted" style="font-size:12px">${enemy.modifiers.map(m=>`<li>${m.name} — ${m.desc}</li>`).join('')}</ul>
+    <div style="margin-top:6px;font-weight:700">Rewards</div>
+    <div class="muted">🔧 ${reward.parts} | 💰 ${reward.gold} | 🧪 ${Math.round(reward.mutagenChance*100)}% | ⭐ ${reward.xp}</div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn" onclick="enterCombat(G.currentContract.enemy)">Fight Boss</button>
+    </div></div>`;
+}
+
+/* ===================== CRAFT ===================== */
+function viewCraft(){
+  $('#view').innerHTML = `<div class="section">
+    <div class="row" style="justify-content:space-between">
+      <div style="font-weight:800">Crafting</div>
+      <div class="badge">🌿 ${G.mats.herb||0} 🍺 ${G.mats.alcohol||0} 🔧 ${G.mats.part||0} 💣 ${G.items.bomb||0} 🍷 ${G.items.swallow||0}</div>
+    </div>
+    <div class="divider"></div>
+    <div class="card"><div style="font-weight:800;margin-bottom:4px">🧨 Bombs</div>
+      <div class="row" style="justify-content:space-between">
+        <div class="muted" style="font-size:13px">Craft Bomb (needs: 🌿2 🍺1)</div><button class="btn" onclick="craftBomb()">Craft</button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="card"><div style="font-weight:800;margin-bottom:4px">🍷 Potions</div>
+      <div class="row" style="justify-content:space-between">
+        <div class="muted" style="font-size:13px">Swallow — heals 45 HP (needs: 🌿3 🍺2)</div><button class="btn" onclick="craftSwallow()">Craft</button>
+      </div>
+    </div>
+  </div>`;
+}
+window.viewCraft=viewCraft;
+function craftBomb(){ if((G.mats.herb||0)>=2 && (G.mats.alcohol||0)>=1){ G.mats.herb-=2; G.mats.alcohol-=1; G.items.bomb=(G.items.bomb||0)+1; saveGame(); toast('Bomb crafted!','good'); viewCraft(); } else toast('Missing herbs/alcohol','bad'); }
+function craftSwallow(){ if((G.mats.herb||0)>=3 && (G.mats.alcohol||0)>=2){ G.mats.herb-=3; G.mats.alcohol-=2; G.items.swallow=(G.items.swallow||0)+1; saveGame(); toast('Brewed: Swallow','good'); viewCraft(); } else toast('Missing herbs/alcohol','bad'); }
+
+/* ===================== INVENTORY ===================== */
+function viewInventory(){
+  const allArmor=DATA.armorSets.flatMap(s=>s.pieces);
+  const allGear=[...DATA.swords,...allArmor];
+  $('#view').innerHTML=`<div class="section">
+    <div style="font-weight:800">Inventory</div>
+    <div class="divider"></div>
+    <div class="grid3">${(G.inventory||[]).length?G.inventory.map(id=>{
+      const item=allGear.find(g=>g.id===id) || (DATA.trophies[id] && {name:DATA.trophies[id].name, rarity:'trophy'});
+      if(!item) return '';
+      return `<button class="card" onclick="equipFromInv('${id}')"><div style="font-weight:800">${item.name}</div><div class="muted" style="font-size:12px">${item.rarity||''}</div></button>`;
+    }).join(''):'<div class="muted">Empty</div>'}</div>
+    <div class="divider"></div>
+    <div style="font-weight:800;margin-bottom:6px">Equipped</div>
+    ${Object.keys(G.gear).map(slot=>{
+      const id=G.gear[slot]; const item=id?(allGear.find(g=>g.id===id) || {name:DATA.trophies[id]?.name}):null;
+      return `<div class="card row" style="justify-content:space-between"><div><b>${slot.toUpperCase()}</b> — ${item?item.name:'(Empty)'}</div>${id?`<button class="btn" onclick="unequip('${slot}')">Unequip</button>`:''}</div>`;
+    }).join('')}
+  </div>`;
+}
+window.viewInventory=viewInventory;
+function equipFromInv(id){ const allArmor=DATA.armorSets.flatMap(s=>s.pieces); const allGear=[...DATA.swords,...allArmor]; const it=allGear.find(g=>g.id===id) || (DATA.trophies[id] && {type:'trophy'}); if(!it) return; const slot = it.type==='armor'?it.slot:it.type; G.gear[slot]=id; applySetBonuses(); saveGame(); toast('Equipped','good'); viewInventory(); }
+function unequip(slot){ G.gear[slot]=null; applySetBonuses(); saveGame(); viewInventory(); }
+
+/* ===================== SETS TAB ===================== */
+function viewSetsTab(){
+  const blocks = DATA.armorSets.map(set=>{
+    const pcs=set.pieces.map(p=>`<li>${p.name} — ${Object.entries(p.bonuses).map(([k,v])=>`${k}: ${typeof v==='number' && v<2?Math.round(v*100)+'%':v}`).join(', ')}</li>`).join('');
+    const bons=set.setBonuses.map(b=>`<li><b>${b.count}-Piece</b>: ${Object.entries(b.effect).map(([k,v])=>`${k}: ${typeof v==='number' && (k.endsWith('Mult')?((v-1)*100).toFixed(0)+'%':(v<2?Math.round(v*100)+'%':v))}`).join(', ')}</li>`).join('');
+    return `<div class="card"><div style="font-weight:800">${set.name} — ${set.theme}</div><div class="divider"></div><div style="font-weight:700">Pieces</div><ul class="muted">${pcs}</ul><div style="font-weight:700">Set Bonuses</div><ul class="muted">${bons}</ul></div>`;
+  }).join('');
+  $('#view').innerHTML = `<div class="section"><div style="font-weight:800">Armor Sets</div><div class="divider"></div>${blocks}</div>`;
+}
+window.viewSetsTab=viewSetsTab;
+
+/* ===================== QUESTS VIEW & LOGIC ===================== */
+function viewQuests() {
+  const chapter = G?.quests?.currentChapter || (DATA.questChapters?.[0] || 'The Mire\'s Call');
+
+  let html = `<div class="section">
+    <div class="row" style="justify-content:space-between; align-items:center">
+      <div style="font-weight:800; font-size:18px">Quests</div>
+      <div class="badge">${chapter}</div>
+    </div>
+    <div class="divider"></div>`;
+
+  const chapterQuests = DATA.quests.filter(q => q.chapter === chapter);
+
+  for(const quest of chapterQuests) {
+    const isCompleted = !!(G?.quests?.completedQuests?.[quest.id]);
+    const isActive = (G?.quests?.currentQuest === quest.id);
+    const isLocked = (G?.lvl || 1) < quest.levelReq;
+
+    let status = '';
+    let classes = 'questCard';
+    if(isCompleted) classes += ' completed';
+    if(isActive) classes += ' active';
+    if(isLocked && !isCompleted) {
+      classes += ' locked';
+      status = `<div class="muted" style="font-size:12px; margin-top:4px">Requires Level ${quest.levelReq}</div>`;
+    }
+
+    let goalsHtml = (quest.goals || []).map(g => {
+      let text = '';
+      if(g.type === 'huntWin') text = `Win ${g.count} Hunt(s)`;
+      else if(g.type === 'bossKill') text = `Defeat Boss: ${g.id}`;
+      else if(g.type === 'craft') text = `Craft ${g.count}x ${g.item}`;
+      else if(g.type === 'castSign') text = `Cast ${g.id} ${g.count} time(s)`;
+      else if(g.type === 'useWeapon') text = `Win a fight using a ${g.kind} sword`;
+      else text = `${g.type} (x${g.count})`;
+      return `<div class="questGoal">${text}</div>`;
+    }).join('');
+
+    html += `<div class="${classes}">
+      <div style="font-weight:800">${quest.title}</div>
+      <div class="muted" style="font-size:13px; margin-top:4px">${quest.desc}</div>
+      ${status}
+      <div class="row" style="flex-wrap:wrap; margin-top:8px">${goalsHtml}</div>
+    </div>`;
+  }
+
+  html += `</div>`;
+  $('#view').innerHTML = html;
+}
+window.viewQuests = viewQuests;
+
+function checkQuestProgress(actionType, actionDetail = {}) {
+  const questId = G?.quests?.currentQuest;
+  if(!questId) return;
+  if(G.quests.completedQuests[questId]) return;
+
+  const quest = DATA.quests.find(q => q.id === questId);
+  if(!quest) return;
+
+  if((G.lvl||1) < quest.levelReq) return;
+
+  const goals = quest.goals.filter(g => g.type === actionType);
+  if(!goals.length) return;
+
+  let goalMet = false;
+  for(const goal of goals) {
+    if(actionType === 'craft' && goal.item !== actionDetail.item) continue;
+    if(actionType === 'castSign' && goal.id !== actionDetail.id) continue;
+    if(actionType === 'bossKill' && goal.id !== actionDetail.id) continue;
+    if(actionType === 'useWeapon' && goal.kind !== actionDetail.kind) continue;
+    goalMet = true;
+  }
+
+  if(goalMet) completeQuest(questId);
+}
+
+function completeQuest(questId) {
+  const quest = DATA.quests.find(q => q.id === questId);
+  if(!quest || G.quests.completedQuests[questId]) return;
+
+  toast(`Quest Complete: ${quest.title}!`, 'good');
+  G.quests.completedQuests[quest.id] = true;
+
+  if(quest.rewards) {
+    if(quest.rewards.gold) G.gold += quest.rewards.gold;
+    if(quest.rewards.parts) G.mats.part += quest.rewards.parts;
+    if(quest.rewards.xp) gainXP(quest.rewards.xp);
+    if(quest.rewards.mutagen) G.items.mutagen = (G.items.mutagen||0) + quest.rewards.mutagen;
+    if(quest.rewards.sigils) G.prestige.sigils = (G.prestige.sigils||0) + quest.rewards.sigils;
+    if(quest.rewards.item) G.inventory.push(quest.rewards.item);
+  }
+
+  if(quest.unlock) {
+    if(quest.unlock.craft) G.schematics[quest.unlock.craft] = true;
+    if(quest.unlock.schematic) G.schematics[quest.unlock.schematic] = true;
+    if(quest.unlock.flag) G.quests.flags[quest.unlock.flag] = true;
+    if(quest.unlock.mutation) G.mutations[quest.unlock.mutation] = true;
+  }
+
+  if(quest.next) {
+    G.quests.currentQuest = quest.next;
+    const nextQuest = DATA.quests.find(q => q.id === quest.next);
+    if(nextQuest && nextQuest.chapter !== G.quests.currentChapter) {
+      G.quests.currentChapter = nextQuest.chapter;
+      toast(`New Chapter: ${nextQuest.chapter}`);
+    }
+  } else {
+    G.quests.currentQuest = null;
+  }
+
+  saveGame();
+  if(ACTIVE === 'quests') viewQuests();
+}
+
+/* ===================== XP / LEVELING ===================== */
+function gainXP(x){
+  G.xp += x;
+  while(G.xp >= G.xpTo){
+    G.xp -= G.xpTo;
+    G.lvl += 1;
+    G.xpTo = Math.round(G.xpTo * 1.25 + 40);
+    if(G.lvl % 5 === 0){ G.skillPoints += 1; toast('Level Up! +1 Skill Point','good'); }
+    G.baseDPS += 1;
+  }
+  saveGame();
+}
+
+/* ===================== SAVE MIGRATION ===================== */
+function ensureQuestState(){
+  if(!G) return;
+  G.mats = G.mats || { herb:0, alcohol:0, part:0 };
+  G.items = G.items || { bomb:0, mutagen:0, trophy:0, swallow:0 };
+  G.prestige = G.prestige || { sigils:0, perks:{}, count:0 };
+  G.gear = G.gear || { steel:null, silver:null, helmet:null, chest:null, gauntlets:null, trousers:null, boots:null, trophy:null };
+  G.stats = G.stats || { totalKills:0, perfectStacks:0, totalDamageDealt:0, potionsUsed:0, signsCast:0, bossesKilled:0, criticalHits:0 };
+  G.autoBattle = G.autoBattle || false;
+  G.bestiary = G.bestiary || {};
+  G.settings = G.settings || { autoBattleDelay: 2000 };
+
+  if(!G.quests || typeof G.quests !== 'object'){
+    G.quests = {
+      currentChapter: DATA.questChapters?.[0] || 'The Mire\'s Call',
+      currentQuest: (DATA.quests?.find(q=>q.chapter === (DATA.questChapters?.[0] || 'The Mire\'s Call') && !q.optional)?.id) || null,
+      completedQuests: {},
+      flags: {}
+    };
+  } else {
+    G.quests.currentChapter = G.quests.currentChapter || (DATA.questChapters?.[0] || 'The Mire\'s Call');
+    const chapters = DATA.questChapters || [];
+    if(!chapters.includes(G.quests.currentChapter)){
+      G.quests.currentChapter = chapters[0] || 'The Mire\'s Call';
+    }
+    G.quests.completedQuests = G.quests.completedQuests || {};
+    G.quests.flags = G.quests.flags || {};
+    if(!G.quests.currentQuest || !DATA.quests.some(q=>q.id===G.quests.currentQuest)){
+      const fallback = DATA.quests.find(q=>q.chapter===G.quests.currentChapter && !q.optional);
+      G.quests.currentQuest = fallback ? fallback.id : null;
+    }
+  }
+}
+
+/* ===================== INIT ===================== */
+function render(){ renderNav(); switchView(ACTIVE); }
+loadGame();
+ensureQuestState();
+applySetBonuses();
+render();
+
+// Start auto-battle if it was enabled
+if(G.autoBattle) {
+  startAutoBattle();
+}
+
+/* Expose globals */
+window.acceptContract=acceptContract; window.rerollHunt=rerollHunt;
+window.explainCant=explainCant; window.craftSchematic=craftSchematic; window.equip=equip;
+window.castSign=castSign; window.useBomb=useBomb; window.useSwallow=useSwallow;
+window.genBoss=genBoss; window.closeResult=closeResult; window.enterCombat=enterCombat;
+window.confirmPrestige=confirmPrestige;
+</script>
+</body>
+</html>

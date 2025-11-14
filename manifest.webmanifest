@@ -1,21 +1,20 @@
 {
   "name": "Hexer",
   "short_name": "Hexer",
-  "start_url": ".",
+  "description": "Witcher-inspired idle autobattler. Hunt, brew, ascend.",
+  "start_url": "/Hexer/",
+  "scope": "/Hexer/",
   "display": "standalone",
-  "background_color": "#0b0f14",
-  "theme_color": "#0b0f14",
+  "background_color": "#0e0f12",
+  "theme_color": "#0e0f12",
+  "dir": "ltr",
+  "lang": "en",
+  "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+    { "src": "icons/192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "categories": ["games", "role-playing", "casual"]
 }
